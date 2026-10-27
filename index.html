@@ -6,16 +6,13 @@
 <meta name="theme-color" content="#0f766e">
 <title>Ward Work - Realtime Sync</title>
 <!--
-  Firebase Realtime Database Rules (แนะนำ — ให้เข้าถึงได้เฉพาะคนที่รู้รหัสห้อง ไม่ให้ list ห้องทั้งหมดได้)
+  Firebase Realtime Database Rules (ต้องอนุญาตให้อ่าน/เขียนที่ rooms/<room> อย่างน้อยดังนี้)
   {
     "rules": {
-      ".read": false,
-      ".write": false,
-      "v2": { "$room": { ".read": true, ".write": true } }
+      "rooms": { "$room": { ".read": true, ".write": true } }
     }
   }
-  หมายเหตุ: ถ้าต้องการให้ระบบดึงข้อมูลจากห้องเวอร์ชันเก่า (path "rooms/") มาย้ายอัตโนมัติ
-  ให้เปิด "rooms": { "$room": { ".read": true } } ไว้ชั่วคราวจนกว่าทุกห้องจะย้ายเสร็จ
+  ตั้งที่ Firebase Console > Realtime Database > Rules แล้วกด Publish
 -->
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -238,6 +235,7 @@
   <div class="btns" style="margin-top:0;margin-bottom:6px">
     <button id="genRoom" class="secondary" type="button">🎲 สุ่มรหัสห้องใหม่</button>
     <button id="copyInvite" class="secondary" type="button">🔗 คัดลอกลิงก์ชวนเพื่อน</button>
+    <button id="testConn" class="secondary" type="button">🩺 ทดสอบการเชื่อมต่อ</button>
   </div>
   <div class="warn">⚠️ ใครรู้รหัสห้องจะเห็นข้อมูลได้ — ใช้รหัสที่เดายาก และ<b>ห้ามใส่ชื่อ-นามสกุลหรือ HN ผู้ป่วย</b> ให้ใช้เลขเตียงแทน</div>
 
@@ -253,7 +251,7 @@
 'use strict';
 /* =====================================================================
    Ward Work — realtime sync
-   - ข้อมูลที่ซิงค์ (v2/<room>/data) เก็บแบบ "ทีละรายการ" (ward/เตียง/งาน แต่ละอันมี path ของตัวเอง)
+   - ข้อมูลที่ซิงค์ (rooms/<room>/v2/data) เก็บแบบ "ทีละรายการ" (ward/เตียง/งาน แต่ละอันมี path ของตัวเอง)
      ทำให้คนละคนแก้คนละงานพร้อมกันได้ ไม่เขียนทับกัน
    - ตั้งค่าหน้าจอ (เฉพาะงานค้าง, ใส่วันที่, ยุบ ward) เป็นของแต่ละคน ไม่ซิงค์
    - ออฟไลน์แล้วกลับมา: รวมข้อมูลแบบ 3-way (base / ในเครื่อง / บนเซิร์ฟเวอร์)
@@ -433,24 +431,27 @@ let dataRef = null, presRef = null, listeners = [];
 let phase = 'off';           // off | init | live
 let joined = false, pending = 0, online = false, presence = {}, logs = [];
 const clientId = uid('c');
+const roomPath = () => 'rooms/' + currentRoom + '/v2';
+let lastError = '';
+const errMsg = e => (e && e.code === 'PERMISSION_DENIED') || /permission/i.test(String(e && (e.code || e.message))) ? 'สิทธิ์ถูกปฏิเสธ — ต้องแก้ Firebase Rules ให้อ่าน/เขียน rooms/ ได้' : String((e && (e.code || e.message)) || e);
 const loadBase = room => { try { return JSON.parse(localStorage.getItem(BKEY + room)); } catch { return null; } };
 const persistBase = f => { try { localStorage.setItem(BKEY + currentRoom, JSON.stringify(f)); } catch {} };
 const roomNote = () => joined ? '\n(มีผลกับทุกคนในห้อง)' : '';
 
 function listen(ref, cb){
-  ref.on('value', cb, err => { console.error(err); toast('❌ อ่านข้อมูลห้องไม่ได้ (ตรวจสิทธิ์ Firebase Rules)'); });
+  ref.on('value', cb, err => { console.error(err); lastError = errMsg(err); toast('❌ ' + lastError); updateSync(); });
   listeners.push([ref, cb]);
 }
 function disconnectRoom(){
   listeners.forEach(([r, cb]) => r.off('value', cb)); listeners = [];
   if (presRef){ try { presRef.onDisconnect().cancel(); presRef.remove(); } catch {} presRef = null; }
-  dataRef = null; joined = false; phase = 'off'; pending = 0; presence = {}; logs = [];
+  dataRef = null; joined = false; lastError = ''; phase = 'off'; pending = 0; presence = {}; logs = [];
   renderLog(); updateSync();
 }
 function registerPresence(){
   if (!db || !currentRoom || !online) return;
   if (presRef) { try { presRef.onDisconnect().cancel(); } catch {} }
-  presRef = db.ref('v2/' + currentRoom + '/presence/' + clientId);
+  presRef = db.ref(roomPath() + '/presence/' + clientId);
   presRef.onDisconnect().remove()
     .then(() => presRef && presRef.set({ name: currentMember || '?', t: firebase.database.ServerValue.TIMESTAMP }))
     .catch(() => {});
@@ -458,7 +459,7 @@ function registerPresence(){
 function connectRoom(){
   disconnectRoom();
   if (!db || !currentRoom){ updateSync(); return; }
-  const root = db.ref('v2/' + currentRoom);
+  const root = db.ref(roomPath());
   dataRef = root.child('data'); phase = 'init';
   listen(dataRef, onRemote);
   listen(root.child('presence'), snap => { presence = snap.val() || {}; updateSync(); });
@@ -512,11 +513,11 @@ function push(ch){
   pending++; updateSync();
   dataRef.update(ch)
     .then(() => { pending--; if (!pending) persistBase(synced); updateSync(); })
-    .catch(e => { pending--; console.error(e); toast('❌ ซิงค์ไม่สำเร็จ ' + (e.code || '')); updateSync(); });
+    .catch(e => { pending--; console.error(e); lastError = errMsg(e); toast('❌ ' + lastError); updateSync(); });
 }
 function logAct(msg){
   if (!joined || !currentRoom) return;
-  db.ref('v2/' + currentRoom + '/log').push({ t: firebase.database.ServerValue.TIMESTAMP, by: currentMember || '?', msg }).catch(() => {});
+  db.ref(roomPath() + '/log').push({ t: firebase.database.ServerValue.TIMESTAMP, by: currentMember || '?', msg }).catch(() => {});
 }
 
 function save(undo = true){
@@ -554,6 +555,7 @@ function updateSync(){
   let ic, txt, tip;
   if (!db){ ic = '⚪'; txt = ' ไม่มี Firebase'; tip = 'โหลด Firebase ไม่ได้ — ใช้งานได้เฉพาะเครื่องนี้'; }
   else if (!currentRoom){ ic = '⚪'; txt = ' ไม่มีห้อง'; tip = 'ยังไม่ได้ตั้งรหัสห้อง — แตะเพื่อตั้งค่า'; }
+  else if (lastError){ ic = '🔴'; txt = ' ผิดพลาด'; tip = lastError; }
   else if (!online){ ic = '🟠'; txt = ' ไม่มีเน็ต'; tip = 'ออฟไลน์ — แก้ไขต่อได้ จะส่งอัตโนมัติเมื่อกลับมาออนไลน์'; }
   else if (!joined){ ic = '🟡'; txt = ' กำลังเชื่อม'; tip = 'กำลังเชื่อมต่อห้อง'; }
   else if (pending){ ic = '⏳'; txt = ' กำลังส่ง'; tip = 'กำลังส่งข้อมูลขึ้นห้อง'; }
@@ -993,6 +995,17 @@ $('copyInvite').onclick = () => {
   if (!r) return toast('ใส่หรือสุ่มรหัสห้องก่อน');
   copyText(location.href.split(/[?#]/)[0] + '?room=' + encodeURIComponent(r));
 };
+$('testConn').onclick = async () => {
+  const r = sanitizeRoom($('roomInput').value);
+  if (!db) return alert('โหลด Firebase SDK ไม่สำเร็จ — ตรวจอินเทอร์เน็ต หรือเปิดไฟล์ผ่าน https (ไม่ใช่ในแอป LINE)');
+  if (!r) return alert('ใส่รหัสห้องก่อน');
+  try {
+    const ref = db.ref('rooms/' + r + '/v2/_test');
+    await ref.set({ t: Date.now(), by: $('memberNameInput').value || '?' });
+    const s = await ref.get(); await ref.remove();
+    alert(s.exists() ? '✅ เชื่อมต่อและอ่าน/เขียนได้ปกติ' : '⚠️ เขียนได้แต่อ่านกลับไม่ได้ — ตรวจ .read ใน Rules');
+  } catch (e) { alert('❌ ' + errMsg(e) + '\n\n(' + (e.code || e.message) + ')'); }
+};
 $('saveRoom').onclick = () => {
   const m = $('memberNameInput').value.trim();
   const r = sanitizeRoom($('roomInput').value);
@@ -1041,7 +1054,7 @@ $('newDay').onclick = () => {
     w.beds.forEach(b => b.tasks = b.tasks.filter(t => !t.done));
     w.beds = w.beds.filter(b => b.tasks.length);
   });
-  if (joined) db.ref('v2/' + currentRoom + '/log').remove().catch(() => {});
+  if (joined) db.ref(roomPath() + '/log').remove().catch(() => {});
   save(); render(); logAct('🌅 เริ่มวันใหม่ (ลบงานที่เสร็จแล้ว)'); toast('เริ่มวันใหม่แล้ว');
 };
 $('clearAll').onclick = () => {
