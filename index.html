@@ -2,24 +2,25 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
 <title>Ward Work</title>
 <style>
   *{box-sizing:border-box}
   :root{--hh:60px}
-  body{margin:0;font-family:system-ui,-apple-system,"Sarabun",sans-serif;background:#f1f5f9;color:#1e293b}
+  body{margin:0;font-family:system-ui,-apple-system,"Sarabun",sans-serif;background:#f1f5f9;color:#1e293b;-webkit-tap-highlight-color:transparent}
   header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
-  header h1{font-size:20px;margin:0;flex:1}
+  header h1{font-size:20px;margin:0;flex:1;white-space:nowrap}
   header input{padding:6px 10px;border-radius:8px;border:none;font-size:15px;width:140px}
   .stat{font-size:13px;opacity:.9}
-  .hbtn{background:rgba(255,255,255,.18);padding:4px 10px}
+  .hbtn{background:rgba(255,255,255,.18);padding:4px 10px;white-space:nowrap}
   #quickbar{flex-basis:100%;display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
   #quickbar[hidden]{display:none}
   #qbLabel{font-size:13px;white-space:nowrap}
   #chips{display:flex;gap:6px}
   .chip{background:#ccfbf1;color:#134e4a;border-radius:16px;padding:3px 10px;font-size:13px;white-space:nowrap}
   main{display:grid;grid-template-columns:1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
-  @media(min-width:900px){main{grid-template-columns:1.4fr 1fr}#output{position:sticky;top:calc(var(--hh) + 16px);align-self:start}}
+  main > section{min-width:0}
   input,button,textarea{font:inherit}
   button{cursor:pointer;border:none;border-radius:8px;padding:6px 12px;background:#0f766e;color:#fff}
   button:hover{filter:brightness(1.1)}
@@ -63,6 +64,49 @@
   #importText{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
   .toast.show{opacity:1}
+
+  /* ---------- 💻 โหมดคอม ---------- */
+  body.desktop{min-width:900px}
+  body.desktop main{grid-template-columns:1.4fr 1fr}
+  body.desktop #output{position:sticky;top:calc(var(--hh) + 16px);align-self:start}
+
+  /* ---------- 📱 โหมดมือถือ ---------- */
+  #mnav{display:none}
+  body.mobile{overflow-x:clip}
+  body.mobile header{padding:8px 10px;gap:6px}
+  body.mobile header h1{font-size:17px}
+  body.mobile header input{width:105px;font-size:16px}
+  body.mobile .stat{display:none}
+  body.mobile .hbtn .lbl{display:none}
+  body.mobile .hbtn{padding:6px 12px;font-size:16px}
+  body.mobile main{padding:10px 10px calc(84px + env(safe-area-inset-bottom));gap:10px}
+  body.mobile input,body.mobile textarea{font-size:16px}
+  body.mobile button{min-height:40px}
+  body.mobile .icon{padding:6px 10px}
+  body.mobile .ward{padding:10px}
+  body.mobile .ward-head{gap:4px}
+  body.mobile .bed{padding:8px 6px 8px 8px}
+  body.mobile .bed-no{width:72px;padding:6px 8px}
+  body.mobile .task{padding:3px 6px 3px 2px}
+  body.mobile .task .st,body.mobile .task .x{min-height:34px;padding:4px 8px}
+  body.mobile .task .tt{padding:6px 2px}
+  body.mobile .task-in,body.mobile .bed-in{padding:9px 10px}
+  body.mobile .task-form button{padding:6px 18px}
+  body.mobile .chip{padding:6px 12px;font-size:14px;min-height:34px}
+  body.mobile .row input{padding:10px}
+  body.mobile .opts{font-size:15px;gap:18px}
+  body.mobile .opts input{width:18px;height:18px;vertical-align:-3px}
+  body.mobile #result{min-height:calc(100vh - var(--hh) - 280px)}
+  body.mobile .btns button{flex:1 1 45%}
+  body.mobile .kbd-only{display:none}
+  body.mobile.tab-out #editor,body.mobile:not(.tab-out) #output{display:none}
+  body.tab-out #quickbar{display:none}
+  body.mobile #mnav{display:flex;gap:6px;position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;
+    border-top:1px solid #e2e8f0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+  #mnav button{flex:1;background:#e2e8f0;color:#334155;font-size:15px;min-height:44px}
+  #mnav button.on{background:#0f766e;color:#fff}
+  #mnav #mCopy{background:#0d9488;color:#fff}
+  body.mobile .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -73,7 +117,8 @@
     <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
   </datalist>
   <span class="stat" id="stat"></span>
-  <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶ ย้อน</button>
+  <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶<span class="lbl"> ย้อน</span></button>
+  <button id="viewBtn" class="hbtn" title="สลับโหมดหน้าจอ"></button>
   <div id="quickbar" hidden>
     <span id="qbLabel"></span>
     <div id="chips"></div>
@@ -81,7 +126,7 @@
 </header>
 
 <main>
-  <section>
+  <section id="editor">
     <form class="row" id="wardForm">
       <input id="newWard" placeholder="เพิ่ม ward เช่น Gyne 3" autocomplete="off">
       <button type="submit">+ Ward</button>
@@ -109,10 +154,17 @@
       • ขึ้นต้นด้วย <b>/</b> = บันทึกเป็น ✅ ทันที · หมายเหตุใส่ในวงเล็บ<br>
       • แตะเตียง → มีปุ่มงานลัดขึ้นด้านบน แตะเพิ่มได้เลย<br>
       • เพิ่มหลายเตียง: <b>3 6 10 21</b> · เตียงพร้อมงาน: <b>12: plan endo, CXR</b><br>
-      • แตะ ⭕️/✅ สลับสถานะ · แตะชื่องานเพื่อแก้ไข · Ctrl/Cmd+Z ย้อนกลับ
+      • แตะ ⭕️/✅ สลับสถานะ · แตะชื่องานเพื่อแก้ไข<span class="kbd-only"> · Ctrl/Cmd+Z ย้อนกลับ</span><br>
+      • ปุ่ม 🔄/📱/💻 มุมขวาบน = สลับโหมดหน้าจอ อัตโนมัติ / มือถือ / คอม
     </p>
   </section>
 </main>
+
+<nav id="mnav">
+  <button data-tab="edit">📝 งาน</button>
+  <button data-tab="out">📄 สรุป <span id="navCount"></span></button>
+  <button id="mCopy">📋 คัดลอก</button>
+</nav>
 
 <dialog id="importDlg">
   <h3>📥 นำเข้าจากข้อความ</h3>
@@ -128,6 +180,7 @@
 
 <script>
 const KEY = 'wardwork-v1';
+const VKEY = 'wardwork-view';
 const $ = id => document.getElementById(id);
 const uid = () => Math.random().toString(36).slice(2, 9);
 const COMMON = ['plan endo','plan anes','plan eye','plan ID','plan sx','plan uro','plan nephro','plan hemato',
@@ -174,6 +227,48 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const sortBeds = beds => beds.sort((a,b) => a.bed.localeCompare(b.bed, undefined, {numeric:true}));
 const findWard = id => state.wards.find(w => w.id === id);
 function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w,b}; } return null; }
+
+/* ---------- View mode (มือถือ / คอม) ---------- */
+const VIEWS = {
+  auto:    { icon:'🔄', name:'อัตโนมัติ' },
+  mobile:  { icon:'📱', name:'มือถือ' },
+  desktop: { icon:'💻', name:'คอม' }
+};
+let viewPref = localStorage.getItem(VKEY);
+if (!VIEWS[viewPref]) viewPref = 'auto';
+let tab = 'edit', editScroll = 0;
+const mq = matchMedia('(max-width: 899px)');
+
+function currentMode(){ return viewPref === 'auto' ? (mq.matches ? 'mobile' : 'desktop') : viewPref; }
+
+function applyView(){
+  const mode = currentMode(), cl = document.body.classList;
+  cl.toggle('mobile', mode === 'mobile');
+  cl.toggle('desktop', mode === 'desktop');
+  cl.toggle('tab-out', mode === 'mobile' && tab === 'out');
+  const v = VIEWS[viewPref];
+  $('viewBtn').innerHTML = `${v.icon}<span class="lbl"> ${v.name}</span>`;
+  $('viewBtn').title = `โหมดหน้าจอ: ${v.name}${viewPref === 'auto' ? ` (ตอนนี้ = ${VIEWS[mode].name})` : ''} · แตะเพื่อสลับ`;
+  document.querySelectorAll('#mnav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  setHH();
+}
+
+function cycleView(){
+  const order = ['auto', 'mobile', 'desktop'];
+  viewPref = order[(order.indexOf(viewPref) + 1) % order.length];
+  localStorage.setItem(VKEY, viewPref);
+  applyView();
+  toast(`โหมด${VIEWS[viewPref].name}${viewPref === 'auto' ? ` (${VIEWS[currentMode()].name})` : ''}`);
+}
+
+function setTab(t){
+  if (t === tab) return;
+  if (t === 'out') { editScroll = window.scrollY; commitDrafts(); }
+  tab = t; applyView();
+  window.scrollTo(0, t === 'edit' ? editScroll : 0);
+}
+
+if (mq.addEventListener) mq.addEventListener('change', applyView); else mq.addListener(applyView);
 
 /* ---------- Parse ---------- */
 function parseTask(str){
@@ -334,6 +429,7 @@ function updateOutput(){
     if (el) { el.textContent = wp ? `⭕️ ${wp}` : (w.beds.length ? '✓ ครบ' : ''); el.className = 'badge' + (wp ? '' : ' ok'); }
   });
   $('stat').textContent = `⭕️ ${p}  ✅ ${d}`;
+  $('navCount').textContent = p ? `(⭕️${p})` : '';
 }
 
 /* ---------- Actions ---------- */
@@ -503,6 +599,9 @@ dateEl.checked = state.showDate;
 dateEl.onchange = () => { state.showDate = dateEl.checked; save(); };
 
 $('undoBtn').onclick = undo;
+$('viewBtn').onclick = cycleView;
+document.querySelectorAll('#mnav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)) {
     e.preventDefault(); undo();
@@ -524,7 +623,9 @@ async function copyText(text){
   toast('คัดลอกแล้ว ✓');
 }
 
-$('copy').onclick = () => { commitDrafts(); copyText(buildText()); };
+const copyAll = () => { commitDrafts(); copyText(buildText()); };
+$('copy').onclick = copyAll;
+$('mCopy').onclick = copyAll;
 
 $('newDay').onclick = () => {
   commitDrafts();
@@ -581,10 +682,12 @@ $('cancelImport').onclick = () => dlg.close();
 $('doImport').onclick = () => {
   const n = importText($('importText').value);
   dlg.close(); save(); render();
+  if (currentMode() === 'mobile') setTab('edit');
   toast(n ? `นำเข้า ${n} งานแล้ว` : 'ไม่พบงานในข้อความ');
 };
 
 window.addEventListener('resize', setHH);
+applyView();
 render();
 </script>
 </body>
