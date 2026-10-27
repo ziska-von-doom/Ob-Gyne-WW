@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<title>Ward Work</title>
+<style>
+  *{box-sizing:border-box}
+  :root{--hh:60px}
+  body{margin:0;font-family:system-ui,-apple-system,"Sarabun",sans-serif;background:#f1f5f9;color:#1e293b;-webkit-tap-highlight-color:transparent}
+  header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+  header h1{font-size:20px;margin:0;flex:1;white-space:nowrap}
+  header input{padding:6px 10px;border-radius:8px;border:none;font-size:15px;width:140px}
+  .stat{font-size:13px;opacity:.9}
+  .hbtn{background:rgba(255,255,255,.18);padding:4px 10px;white-space:nowrap}
+  #quickbar{flex-basis:100%;display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
+  #quickbar[hidden]{display:none}
+  #qbLabel{font-size:13px;white-space:nowrap}
+  #chips{display:flex;gap:6px}
+  .chip{background:#ccfbf1;color:#134e4a;border-radius:16px;padding:3px 10px;font-size:13px;white-space:nowrap}
+  main{display:grid;grid-template-columns:1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
+  main > section{min-width:0}
+  input,button,textarea{font:inherit}
+  button{cursor:pointer;border:none;border-radius:8px;padding:6px 12px;background:#0f766e;color:#fff}
+  button:hover{filter:brightness(1.1)}
+  .row{display:flex;gap:8px;margin-bottom:12px}
+  .row input{flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:8px}
+  .ward{background:#fff;border-radius:12px;padding:12px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .ward.collapsed .body{display:none}
+  .ward-head{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  .ward-name{flex:1;min-width:0;font-weight:700;font-size:17px;border:none;border-bottom:2px solid #99f6e4;padding:4px;background:transparent}
+  .badge{font-size:12px;background:#fff7ed;color:#c2410c;border-radius:10px;padding:2px 8px;white-space:nowrap}
+  .badge.ok{background:#ecfdf5;color:#047857}
+  .icon{background:#e2e8f0;color:#334155;padding:4px 10px}
+  .danger{background:#fee2e2;color:#b91c1c}
+  .bed{border-left:4px solid #14b8a6;background:#f8fafc;border-radius:8px;padding:8px;margin-bottom:8px}
+  .bed.active{border-left-color:#f59e0b;background:#fffbeb}
+  .bed-head{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+  .bed-no{width:90px;font-weight:700;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px}
+  .tasks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+  .empty{font-size:13px;color:#94a3b8}
+  .task{display:inline-flex;align-items:center;gap:2px;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:2px 4px 2px 2px}
+  .task.done{background:#ecfdf5;border-color:#a7f3d0}
+  .task .st,.task .x{background:none;color:inherit;padding:2px 4px}
+  .task .x{color:#94a3b8}
+  .task .tt{cursor:pointer;padding:0 2px}
+  .task.done .tt{color:#64748b}
+  .task small{color:#64748b}
+  .task-form{display:flex;gap:6px}
+  .task-form button{padding:4px 14px;font-weight:700}
+  .task-in,.bed-in{flex:1;min-width:0;padding:6px 8px;border:1px dashed #94a3b8;border-radius:6px;background:#fff}
+  .add-bed{display:flex;gap:6px;margin-top:6px}
+  #output{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  #output h2{margin:0 0 8px;font-size:17px}
+  .opts{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
+  #result{width:100%;min-height:320px;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px;line-height:1.5;white-space:pre-wrap}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .btns .secondary{background:#e2e8f0;color:#334155}
+  .btns .secondary.danger{background:#fee2e2;color:#b91c1c}
+  .hint{font-size:12px;color:#64748b;margin:6px 0 0}
+  dialog{border:none;border-radius:12px;padding:16px;width:min(560px,92vw)}
+  dialog h3{margin:0 0 6px}
+  #importText{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
+  .toast.show{opacity:1}
+
+  /* ---------- 💻 โหมดคอม ---------- */
+  body.desktop{min-width:900px}
+  body.desktop main{grid-template-columns:1.4fr 1fr}
+  body.desktop #output{position:sticky;top:calc(var(--hh) + 16px);align-self:start}
+
+  /* ---------- 📱 โหมดมือถือ ---------- */
+  #mnav{display:none}
+  body.mobile{overflow-x:clip}
+  body.mobile header{padding:8px 10px;gap:6px}
+  body.mobile header h1{font-size:17px}
+  body.mobile header input{width:105px;font-size:16px}
+  body.mobile .stat{display:none}
+  body.mobile .hbtn .lbl{display:none}
+  body.mobile .hbtn{padding:6px 12px;font-size:16px}
+  body.mobile main{padding:10px 10px calc(84px + env(safe-area-inset-bottom));gap:10px}
+  body.mobile input,body.mobile textarea{font-size:16px}
+  body.mobile button{min-height:40px}
+  body.mobile .icon{padding:6px 10px}
+  body.mobile .ward{padding:10px}
+  body.mobile .ward-head{gap:4px}
+  body.mobile .bed{padding:8px 6px 8px 8px}
+  body.mobile .bed-no{width:72px;padding:6px 8px}
+  body.mobile .task{padding:3px 6px 3px 2px}
+  body.mobile .task .st,body.mobile .task .x{min-height:34px;padding:4px 8px}
+  body.mobile .task .tt{padding:6px 2px}
+  body.mobile .task-in,body.mobile .bed-in{padding:9px 10px}
+  body.mobile .task-form button{padding:6px 18px}
+  body.mobile .chip{padding:6px 12px;font-size:14px;min-height:34px}
+  body.mobile .row input{padding:10px}
+  body.mobile .opts{font-size:15px;gap:18px}
+  body.mobile .opts input{width:18px;height:18px;vertical-align:-3px}
+  body.mobile #result{min-height:calc(100vh - var(--hh) - 280px)}
+  body.mobile .btns button{flex:1 1 45%}
+  body.mobile .kbd-only{display:none}
+  body.mobile.tab-out #editor,body.mobile:not(.tab-out) #output{display:none}
+  body.tab-out #quickbar{display:none}
+  body.mobile #mnav{display:flex;gap:6px;position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;
+    border-top:1px solid #e2e8f0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 8px rgba(0,0,0,.06)}
+  #mnav button{flex:1;background:#e2e8f0;color:#334155;font-size:15px;min-height:44px}
+  #mnav button.on{background:#0f766e;color:#fff}
+  #mnav #mCopy{background:#0d9488;color:#fff}
+  body.mobile .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 Ward Work</h1>
+  <input id="round" list="roundList" placeholder="ชื่อราวน์">
+  <datalist id="roundList">
+    <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
+  </datalist>
+  <span class="stat" id="stat"></span>
+  <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶<span class="lbl"> ย้อน</span></button>
+  <button id="viewBtn" class="hbtn" title="สลับโหมดหน้าจอ"></button>
+  <div id="quickbar" hidden>
+    <span id="qbLabel"></span>
+    <div id="chips"></div>
+  </div>
+</header>
+
+<main>
+  <section id="editor">
+    <form class="row" id="wardForm">
+      <input id="newWard" placeholder="เพิ่ม ward เช่น Gyne 3" autocomplete="off">
+      <button type="submit">+ Ward</button>
+    </form>
+    <div id="wards"></div>
+    <datalist id="taskList"></datalist>
+  </section>
+
+  <section id="output">
+    <h2>ข้อความสรุป</h2>
+    <div class="opts">
+      <label><input type="checkbox" id="pendingOnly"> เฉพาะงานค้าง ⭕️</label>
+      <label><input type="checkbox" id="showDate"> ใส่วันที่</label>
+    </div>
+    <textarea id="result" readonly></textarea>
+    <div class="btns">
+      <button id="copy">📋 คัดลอกข้อความ</button>
+      <button id="importBtn" class="secondary">📥 นำเข้าข้อความ</button>
+      <button id="newDay" class="secondary">🌅 เริ่มวันใหม่</button>
+      <button id="clearAll" class="secondary danger">🗑 ล้างทั้งหมด</button>
+    </div>
+    <p class="hint">
+      • พิมพ์งานแล้วกด Enter หรือปุ่ม + · ไม่กดก็ได้ ออกจากช่องแล้วบันทึกให้เอง<br>
+      • ใส่หลายงานพร้อมกัน คั่นด้วย <b>,</b> เช่น <b>plan endo (ยังไม่มา), CXR, /lab pre op</b><br>
+      • ขึ้นต้นด้วย <b>/</b> = บันทึกเป็น ✅ ทันที · หมายเหตุใส่ในวงเล็บ<br>
+      • แตะเตียง → มีปุ่มงานลัดขึ้นด้านบน แตะเพิ่มได้เลย<br>
+      • เพิ่มหลายเตียง: <b>3 6 10 21</b> · เตียงพร้อมงาน: <b>12: plan endo, CXR</b><br>
+      • แตะ ⭕️/✅ สลับสถานะ · แตะชื่องานเพื่อแก้ไข<span class="kbd-only"> · Ctrl/Cmd+Z ย้อนกลับ</span><br>
+      • ปุ่ม 🔄/📱/💻 มุมขวาบน = สลับโหมดหน้าจอ อัตโนมัติ / มือถือ / คอม
+    </p>
+  </section>
+</main>
+
+<nav id="mnav">
+  <button data-tab="edit">📝 งาน</button>
+  <button data-tab="out">📄 สรุป <span id="navCount"></span></button>
+  <button id="mCopy">📋 คัดลอก</button>
+</nav>
+
+<dialog id="importDlg">
+  <h3>📥 นำเข้าจากข้อความ</h3>
+  <p class="hint">วางข้อความสรุปเดิม (เช่นจาก LINE) ระบบจะแยก ward / เตียง / งานให้ และรวมกับข้อมูลที่มีอยู่</p>
+  <textarea id="importText" rows="12" placeholder="Gyne 1&#10;• 12 ⭕️plan endo (ยังไม่มา) ✅CXR&#10;• 15 ⭕️F/U lab"></textarea>
+  <div class="btns">
+    <button id="doImport">นำเข้า</button>
+    <button id="cancelImport" class="secondary">ยกเลิก</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'wardwork-v1';
+const VKEY = 'wardwork-view';
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2, 9);
+const COMMON = ['plan endo','plan anes','plan eye','plan ID','plan sx','plan uro','plan nephro','plan hemato',
+  'plan nephro/hemato','plan med','plan ortho','plan cardio','lab pre op','lab sepsis','ใบ refer','CTPA',
+  'CT chest c WA','CXR','EKG','U/S','H/C','F/U lab','ขอเลือด','consent'];
+const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false, showDate:false, freq:{},
+  wards:['Gyne 1','Gyne 2','OB1','OB2'].map(n => ({ id:uid(), name:n, collapsed:false, beds:[] })) });
+
+const wardsEl = $('wards');
+let state = load();
+let activeBed = null;
+let rendering = false;
+const undoStack = [];
+let lastSnap = JSON.stringify(state);
+
+function load(){
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.wards)) return { ...DEFAULT(), ...s, freq: s.freq || {} };
+  } catch {}
+  return DEFAULT();
+}
+
+function save(undo = true){
+  const snap = JSON.stringify(state);
+  if (snap !== lastSnap){
+    if (undo){ undoStack.push(lastSnap); if (undoStack.length > 50) undoStack.shift(); }
+    lastSnap = snap;
+    localStorage.setItem(KEY, snap);
+  }
+  updateOutput();
+}
+
+function undo(){
+  if (!undoStack.length) return toast('ไม่มีอะไรให้ย้อนแล้ว');
+  state = JSON.parse(undoStack.pop());
+  lastSnap = JSON.stringify(state);
+  localStorage.setItem(KEY, lastSnap);
+  roundEl.value = state.round; pendEl.checked = state.pendingOnly; dateEl.checked = state.showDate;
+  render(); toast('↶ ย้อนกลับแล้ว');
+}
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sortBeds = beds => beds.sort((a,b) => a.bed.localeCompare(b.bed, undefined, {numeric:true}));
+const findWard = id => state.wards.find(w => w.id === id);
+function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w,b}; } return null; }
+
+/* ---------- View mode (มือถือ / คอม) ---------- */
+const VIEWS = {
+  auto:    { icon:'🔄', name:'อัตโนมัติ' },
+  mobile:  { icon:'📱', name:'มือถือ' },
+  desktop: { icon:'💻', name:'คอม' }
+};
+let viewPref = localStorage.getItem(VKEY);
+if (!VIEWS[viewPref]) viewPref = 'auto';
+let tab = 'edit', editScroll = 0;
+const mq = matchMedia('(max-width: 899px)');
+
+function currentMode(){ return viewPref === 'auto' ? (mq.matches ? 'mobile' : 'desktop') : viewPref; }
+
+function applyView(){
+  const mode = currentMode(), cl = document.body.classList;
+  cl.toggle('mobile', mode === 'mobile');
+  cl.toggle('desktop', mode === 'desktop');
+  cl.toggle('tab-out', mode === 'mobile' && tab === 'out');
+  const v = VIEWS[viewPref];
+  $('viewBtn').innerHTML = `${v.icon}<span class="lbl"> ${v.name}</span>`;
+  $('viewBtn').title = `โหมดหน้าจอ: ${v.name}${viewPref === 'auto' ? ` (ตอนนี้ = ${VIEWS[mode].name})` : ''} · แตะเพื่อสลับ`;
+  document.querySelectorAll('#mnav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  setHH();
+}
+
+function cycleView(){
+  const order = ['auto', 'mobile', 'desktop'];
+  viewPref = order[(order.indexOf(viewPref) + 1) % order.length];
+  localStorage.setItem(VKEY, viewPref);
+  applyView();
+  toast(`โหมด${VIEWS[viewPref].name}${viewPref === 'auto' ? ` (${VIEWS[currentMode()].name})` : ''}`);
+}
+
+function setTab(t){
+  if (t === tab) return;
+  if (t === 'out') { editScroll = window.scrollY; commitDrafts(); }
+  tab = t; applyView();
+  window.scrollTo(0, t === 'edit' ? editScroll : 0);
+}
+
+if (mq.addEventListener) mq.addEventListener('change', applyView); else mq.addListener(applyView);
+
+/* ---------- Parse ---------- */
+function parseTask(str){
+  str = str.trim();
+  let done = false;
+  if (str.startsWith('/')) { done = true; str = str.slice(1).trim(); }
+  const m = str.match(/^(.*?)\s*\((.*)\)\s*$/);
+  return m ? { text:m[1].trim(), note:m[2].trim(), done } : { text:str, note:'', done };
+}
+
+// แยกหลายงาน: คั่นด้วย , ; | หรือขึ้นบรรทัด (ไม่ตัดในวงเล็บ) หรือรูปแบบ ⭕️งาน ✅งาน
+function splitTasks(str){
+  str = String(str).replace(/\uFE0F/g, '');
+  if (/[⭕✅]/u.test(str)){
+    return str.split(/(?=[⭕✅])/u).map(s => s.trim()).filter(Boolean).map(s => {
+      const c = s[0];
+      if (c === '⭕' || c === '✅') return { ...parseTask(s.slice(1)), done: c === '✅' };
+      return parseTask(s);
+    }).filter(t => t.text);
+  }
+  const parts = []; let cur = '', depth = 0;
+  for (const ch of str){
+    if (ch === '(') depth++;
+    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (depth === 0 && /[,;|\n]/.test(ch)) { parts.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  parts.push(cur);
+  return parts.map(s => s.trim()).filter(Boolean).map(parseTask).filter(t => t.text);
+}
+
+/* ---------- Render ---------- */
+function tasksHTML(b){
+  if (!b.tasks.length) return '<span class="empty">ยังไม่มีงาน</span>';
+  return b.tasks.map(t => `
+    <span class="task ${t.done ? 'done' : ''}">
+      <button class="st" data-act="toggle" data-bed="${b.id}" data-task="${t.id}">${t.done ? '✅' : '⭕️'}</button>
+      <span class="tt" data-act="edit" data-bed="${b.id}" data-task="${t.id}">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+      <button class="x" data-act="delTask" data-bed="${b.id}" data-task="${t.id}">×</button>
+    </span>`).join('');
+}
+
+function focusKey(el){
+  if (!el || !el.dataset) return null;
+  if (el.dataset.taskin) return `[data-taskin="${el.dataset.taskin}"]`;
+  if (el.dataset.bedin) return `[data-bedin="${el.dataset.bedin}"]`;
+  if (el.classList.contains('bed-no')) return `.bed-no[data-bed="${el.dataset.bed}"]`;
+  if (el.classList.contains('ward-name')) return `.ward-name[data-ward="${el.dataset.ward}"]`;
+  return null;
+}
+
+function render(focusSel){
+  rendering = true;
+  // เก็บข้อความที่พิมพ์ค้างไว้ ไม่ให้หายตอนวาดใหม่
+  const drafts = {};
+  wardsEl.querySelectorAll('[data-taskin],[data-bedin]').forEach(i => { const k = focusKey(i); if (i.value && k) drafts[k] = i.value; });
+  const keep = focusSel || focusKey(document.activeElement);
+  if (activeBed && !findBed(activeBed)) activeBed = null;
+
+  wardsEl.innerHTML = state.wards.map(w => `
+    <div class="ward ${w.collapsed ? 'collapsed' : ''}">
+      <div class="ward-head">
+        <button class="icon" data-act="collapse" data-ward="${w.id}" title="พับ/กาง">${w.collapsed ? '▸' : '▾'}</button>
+        <input class="ward-name" data-ward="${w.id}" value="${esc(w.name)}" enterkeyhint="done">
+        <span class="badge" data-badge="${w.id}"></span>
+        <button class="icon" data-act="copyWard" data-ward="${w.id}" title="คัดลอกเฉพาะ ward นี้">📋</button>
+        <button class="icon" data-act="up" data-ward="${w.id}" title="เลื่อนขึ้น">▲</button>
+        <button class="icon danger" data-act="delWard" data-ward="${w.id}" title="ลบ ward">🗑</button>
+      </div>
+      <div class="body">
+        ${w.beds.map(b => `
+          <div class="bed ${b.id === activeBed ? 'active' : ''}" data-bedbox="${b.id}">
+            <div class="bed-head">
+              <input class="bed-no" data-bed="${b.id}" value="${esc(b.bed)}" enterkeyhint="done">
+              <span style="flex:1"></span>
+              <button class="icon" data-act="allDone" data-bed="${b.id}" title="ติ๊ก/ยกเลิกทั้งเตียง">✓ ทั้งเตียง</button>
+              <button class="icon danger" data-act="delBed" data-bed="${b.id}" title="ลบเตียง">✕</button>
+            </div>
+            <div class="tasks" data-tasks="${b.id}">${tasksHTML(b)}</div>
+            <form class="task-form" data-taskform="${b.id}">
+              <input class="task-in" list="taskList" data-taskin="${b.id}" autocomplete="off" enterkeyhint="enter"
+                     placeholder="+ งาน (หลายงานคั่นด้วย , ) แล้วกด Enter">
+              <button type="submit" data-keepfocus title="เพิ่มงาน">+</button>
+            </form>
+          </div>`).join('')}
+        <form class="add-bed" data-bedform="${w.id}">
+          <input class="bed-in" data-bedin="${w.id}" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น 3 6 10 หรือ 12: plan endo, CXR">
+          <button type="submit" data-keepfocus>+ เตียง</button>
+        </form>
+      </div>
+    </div>`).join('');
+
+  for (const [sel, v] of Object.entries(drafts)) { const i = wardsEl.querySelector(sel); if (i) i.value = v; }
+  if (keep) { const f = wardsEl.querySelector(keep); if (f) f.focus(); }
+  rendering = false;
+  updateDatalist(); updateQuickbar(); updateOutput();
+}
+
+function refreshBed(id){
+  const f = findBed(id), box = wardsEl.querySelector(`[data-tasks="${id}"]`);
+  if (f && box) box.innerHTML = tasksHTML(f.b);
+  updateDatalist(); updateOutput();
+}
+
+function updateDatalist(){
+  const set = new Set(COMMON);
+  Object.keys(state.freq).forEach(t => set.add(t));
+  state.wards.forEach(w => w.beds.forEach(b => b.tasks.forEach(t => set.add(t.text))));
+  $('taskList').innerHTML = [...set].map(t => `<option value="${esc(t)}">`).join('');
+}
+
+function updateQuickbar(){
+  const qb = $('quickbar'), f = activeBed && findBed(activeBed);
+  if (!f) { qb.hidden = true; setHH(); return; }
+  qb.hidden = false;
+  $('qbLabel').textContent = `⚡ ${f.w.name} · ${f.b.bed}:`;
+  const all = [...new Set([...Object.keys(state.freq), ...COMMON])]
+    .sort((a,b) => (state.freq[b] || 0) - (state.freq[a] || 0)).slice(0, 16);
+  $('chips').innerHTML = all.map(t => `<button class="chip" data-chip="${esc(t)}">${esc(t)}</button>`).join('');
+  setHH();
+}
+function setHH(){ document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px'); }
+
+function setActive(id){
+  if (activeBed === id) return;
+  activeBed = id;
+  wardsEl.querySelectorAll('.bed.active').forEach(x => x.classList.remove('active'));
+  const bx = wardsEl.querySelector(`[data-bedbox="${id}"]`); if (bx) bx.classList.add('active');
+  updateQuickbar();
+}
+
+/* ---------- Output ---------- */
+function headerText(){
+  let h = state.round || '';
+  if (state.showDate) h += ' ' + new Date().toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+  return h.trim();
+}
+function wardText(w){
+  const lines = w.beds.map(b => {
+    const tasks = b.tasks.filter(t => !state.pendingOnly || !t.done);
+    if (!tasks.length) return null;
+    return `• ${b.bed} ` + tasks.map(t => `${t.done ? '✅' : '⭕️'}${t.text}${t.note ? ` (${t.note})` : ''}`).join(' ');
+  }).filter(Boolean);
+  return lines.length ? `${w.name}\n${lines.join('\n')}` : null;
+}
+function buildText(){
+  const blocks = state.wards.map(wardText).filter(Boolean);
+  return `${headerText()}\n${blocks.join('\n\n')}`.trim();
+}
+
+function updateOutput(){
+  $('result').value = buildText();
+  let p = 0, d = 0;
+  state.wards.forEach(w => {
+    let wp = 0;
+    w.beds.forEach(b => b.tasks.forEach(t => t.done ? d++ : (p++, wp++)));
+    const el = wardsEl.querySelector(`[data-badge="${w.id}"]`);
+    if (el) { el.textContent = wp ? `⭕️ ${wp}` : (w.beds.length ? '✓ ครบ' : ''); el.className = 'badge' + (wp ? '' : ' ok'); }
+  });
+  $('stat').textContent = `⭕️ ${p}  ✅ ${d}`;
+  $('navCount').textContent = p ? `(⭕️${p})` : '';
+}
+
+/* ---------- Actions ---------- */
+function addTasks(bedId, val){
+  const f = findBed(bedId); if (!f) return 0;
+  let n = 0;
+  splitTasks(val).forEach(t => {
+    if (f.b.tasks.some(x => !x.done && x.text === t.text && x.note === t.note)) return; // กันงานซ้ำ
+    f.b.tasks.push({ id:uid(), ...t });
+    state.freq[t.text] = (state.freq[t.text] || 0) + 1;
+    n++;
+  });
+  return n;
+}
+
+function addBed(wardId){
+  const input = wardsEl.querySelector(`[data-bedin="${wardId}"]`);
+  const raw = input.value.trim(); if (!raw) return;
+  let bedPart = raw, taskPart = '';
+  const ci = raw.indexOf(':');
+  if (ci >= 0) { bedPart = raw.slice(0, ci); taskPart = raw.slice(ci + 1).trim(); }
+  const names = bedPart.split(/[\s,]+/).filter(Boolean); if (!names.length) return;
+  const w = findWard(wardId); const ids = [];
+  names.forEach(n => {
+    let b = w.beds.find(x => x.bed === n);
+    if (!b) { b = { id:uid(), bed:n, tasks:[] }; w.beds.push(b); }
+    ids.push(b.id);
+  });
+  if (taskPart) ids.forEach(id => addTasks(id, taskPart));
+  input.value = '';
+  sortBeds(w.beds); save();
+  if (ids.length === 1) activeBed = ids[0];
+  render(!taskPart && ids.length === 1 ? `[data-taskin="${ids[0]}"]` : `[data-bedin="${wardId}"]`);
+}
+
+function commitDrafts(){
+  let n = 0;
+  wardsEl.querySelectorAll('[data-taskin]').forEach(i => { if (i.value.trim()) { n += addTasks(i.dataset.taskin, i.value); i.value = ''; } });
+  if (n) { save(); render(); }
+  return n;
+}
+
+// เลื่อนการวาดใหม่ไปหลังปล่อยนิ้ว/เมาส์ ไม่ให้ปุ่มที่กำลังกดหายไป
+let pointerDown = false, pending = [];
+document.addEventListener('pointerdown', () => pointerDown = true, true);
+const release = () => { pointerDown = false; if (pending.length) setTimeout(() => { const p = pending; pending = []; p.forEach(f => f()); }, 0); };
+document.addEventListener('pointerup', release, true);
+document.addEventListener('pointercancel', release, true);
+const whenIdle = fn => pointerDown ? pending.push(fn) : fn();
+
+// ปุ่ม + ไม่แย่งโฟกัสจากช่องพิมพ์
+document.addEventListener('mousedown', e => { if (e.target.closest('[data-keepfocus]')) e.preventDefault(); });
+
+/* ---------- Events ---------- */
+wardsEl.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.dataset.taskform) {
+    const id = f.dataset.taskform, inp = f.querySelector('input');
+    const v = inp.value; inp.value = '';
+    if (addTasks(id, v)) { save(); render(`[data-taskin="${id}"]`); }
+    else { if (v.trim()) toast('งานนี้มีอยู่แล้ว'); inp.focus(); }
+  } else if (f.dataset.bedform) addBed(f.dataset.bedform);
+});
+
+// พิมพ์ค้างไว้แล้วออกจากช่อง → บันทึกให้อัตโนมัติ
+wardsEl.addEventListener('focusout', e => {
+  if (rendering) return;
+  const id = e.target.dataset && e.target.dataset.taskin;
+  if (!id || !e.target.value.trim()) return;
+  const v = e.target.value; e.target.value = '';
+  if (addTasks(id, v)) { save(); whenIdle(() => refreshBed(id)); toast('บันทึกงานที่พิมพ์ค้างไว้แล้ว'); }
+});
+
+wardsEl.addEventListener('focusin', e => {
+  const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox);
+});
+
+wardsEl.addEventListener('click', e => {
+  const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox);
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const { act, ward, bed, task } = t.dataset;
+  const w = ward ? findWard(ward) : null;
+  const fb = bed ? findBed(bed) : null;
+  if ((ward && !w) || (bed && !fb)) return;
+
+  switch (act) {
+    case 'collapse': w.collapsed = !w.collapsed; break;
+    case 'copyWard': return copyText(wardText(w) || `${w.name}\n(ไม่มีงาน)`);
+    case 'up': {
+      const i = state.wards.indexOf(w);
+      if (i > 0) [state.wards[i-1], state.wards[i]] = [state.wards[i], state.wards[i-1]];
+      break;
+    }
+    case 'delWard':
+      if (!confirm(`ลบ ${w.name} ทั้ง ward?`)) return;
+      state.wards = state.wards.filter(x => x !== w); break;
+    case 'delBed':
+      if (fb.b.tasks.length && !confirm(`ลบเตียง ${fb.b.bed}?`)) return;
+      fb.w.beds = fb.w.beds.filter(x => x !== fb.b); break;
+    case 'allDone': {
+      if (!fb.b.tasks.length) return;
+      const all = fb.b.tasks.every(x => x.done);
+      fb.b.tasks.forEach(x => x.done = !all); break;
+    }
+    case 'toggle': case 'delTask': case 'edit': {
+      const tk = fb.b.tasks.find(x => x.id === task); if (!tk) return;
+      if (act === 'toggle') tk.done = !tk.done;
+      if (act === 'delTask') fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
+      if (act === 'edit') {
+        const v = prompt('แก้ไขงาน (หมายเหตุใส่ในวงเล็บ, ขึ้นต้น / = เสร็จแล้ว)', (tk.done ? '/' : '') + tk.text + (tk.note ? ` (${tk.note})` : ''));
+        if (v === null) return;
+        if (!v.trim()) fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
+        else { const p = parseTask(v); if (!p.text) return; tk.text = p.text; tk.note = p.note; tk.done = p.done; }
+      }
+      break;
+    }
+    default: return;
+  }
+  save(); render();
+});
+
+wardsEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.target.classList.contains('bed-no') || e.target.classList.contains('ward-name'))) {
+    e.preventDefault(); e.target.blur();
+  }
+});
+
+wardsEl.addEventListener('input', e => {
+  const d = e.target.dataset;
+  if (e.target.classList.contains('ward-name')) { const w = findWard(d.ward); if (w) { w.name = e.target.value; save(false); } }
+  if (e.target.classList.contains('bed-no')) { const f = findBed(d.bed); if (f) { f.b.bed = e.target.value; save(false); } }
+});
+
+wardsEl.addEventListener('change', e => {
+  if (!e.target.classList.contains('bed-no')) return;
+  const f = findBed(e.target.dataset.bed); if (!f) return;
+  f.b.bed = e.target.value.trim() || '?';
+  if (f.w.beds.some(x => x !== f.b && x.bed === f.b.bed)) toast(`⚠️ มีเตียง ${f.b.bed} ซ้ำใน ${f.w.name}`);
+  sortBeds(f.w.beds); save();
+  whenIdle(() => render());
+});
+
+$('chips').addEventListener('click', e => {
+  const c = e.target.closest('[data-chip]'); if (!c || !activeBed) return;
+  if (addTasks(activeBed, c.dataset.chip)) { save(); refreshBed(activeBed); toast(`+ ${c.dataset.chip}`); }
+  else toast('งานนี้มีอยู่แล้ว');
+});
+
+$('wardForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const i = $('newWard'), name = i.value.trim(); if (!name) return;
+  state.wards.push({ id:uid(), name, collapsed:false, beds:[] });
+  i.value = ''; save(); render();
+});
+
+const roundEl = $('round');
+roundEl.value = state.round;
+roundEl.addEventListener('input', () => { state.round = roundEl.value; save(false); });
+
+const pendEl = $('pendingOnly');
+pendEl.checked = state.pendingOnly;
+pendEl.onchange = () => { state.pendingOnly = pendEl.checked; save(); };
+
+const dateEl = $('showDate');
+dateEl.checked = state.showDate;
+dateEl.onchange = () => { state.showDate = dateEl.checked; save(); };
+
+$('undoBtn').onclick = undo;
+$('viewBtn').onclick = cycleView;
+document.querySelectorAll('#mnav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)) {
+    e.preventDefault(); undo();
+  }
+});
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  toast('คัดลอกแล้ว ✓');
+}
+
+const copyAll = () => { commitDrafts(); copyText(buildText()); };
+$('copy').onclick = copyAll;
+$('mCopy').onclick = copyAll;
+
+$('newDay').onclick = () => {
+  commitDrafts();
+  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง\n(งาน ⭕️ ที่ค้างจะยกไปวันใหม่)')) return;
+  state.wards.forEach(w => {
+    w.beds.forEach(b => b.tasks = b.tasks.filter(t => !t.done));
+    w.beds = w.beds.filter(b => b.tasks.length);
+  });
+  save(); render(); toast('เริ่มวันใหม่แล้ว (กด ↶ ย้อนได้)');
+};
+
+$('clearAll').onclick = () => {
+  if (!confirm('ล้างเตียงและงานทั้งหมด? (ward จะยังอยู่)')) return;
+  state.wards.forEach(w => w.beds = []);
+  save(); render(); toast('ล้างแล้ว (กด ↶ ย้อนได้)');
+};
+
+/* ---------- Import ---------- */
+function importText(txt){
+  const lines = txt.replace(/\uFE0F/g, '').split(/\r?\n/);
+  let w = null, n = 0;
+  const getWard = name => {
+    let x = state.wards.find(v => v.name.trim().toLowerCase() === name.toLowerCase());
+    if (!x) { x = { id:uid(), name, collapsed:false, beds:[] }; state.wards.push(x); }
+    return x;
+  };
+  for (const raw of lines) {
+    let line = raw.trim(); if (!line) continue;
+    const bullet = /^[•·\-*]\s*/.test(line);
+    if (bullet || /[⭕✅]/u.test(line)) {
+      line = line.replace(/^[•·\-*]\s*/, '');
+      const m = line.match(/^([^\s⭕✅]+)\s*(.*)$/u); if (!m) continue;
+      if (!w) w = getWard('Ward');
+      let b = w.beds.find(x => x.bed === m[1]);
+      if (!b) { b = { id:uid(), bed:m[1], tasks:[] }; w.beds.push(b); }
+      splitTasks(m[2]).forEach(t => {
+        const ex = b.tasks.find(x => x.text === t.text && x.note === t.note);
+        if (ex) ex.done = ex.done || t.done;
+        else { b.tasks.push({ id:uid(), ...t }); n++; }
+      });
+    } else if (/^(ราวน์|round)/i.test(line)) {
+      continue;
+    } else {
+      w = getWard(line);
+    }
+  }
+  state.wards.forEach(x => sortBeds(x.beds));
+  return n;
+}
+
+const dlg = $('importDlg');
+$('importBtn').onclick = () => { $('importText').value = ''; dlg.showModal(); };
+$('cancelImport').onclick = () => dlg.close();
+$('doImport').onclick = () => {
+  const n = importText($('importText').value);
+  dlg.close(); save(); render();
+  if (currentMode() === 'mobile') setTab('edit');
+  toast(n ? `นำเข้า ${n} งานแล้ว` : 'ไม่พบงานในข้อความ');
+};
+
+window.addEventListener('resize', setHH);
+applyView();
+render();
+</script>
+</body>
+</html>
