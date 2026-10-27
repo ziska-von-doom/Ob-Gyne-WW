@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
 <title>Ward Work - Realtime Sync</title>
+<!--
+  Firebase Realtime Database Rules (แนะนำ — ให้เข้าถึงได้เฉพาะคนที่รู้รหัสห้อง ไม่ให้ list ห้องทั้งหมดได้)
+  {
+    "rules": {
+      ".read": false,
+      ".write": false,
+      "v2": { "$room": { ".read": true, ".write": true } }
+    }
+  }
+  หมายเหตุ: ถ้าต้องการให้ระบบดึงข้อมูลจากห้องเวอร์ชันเก่า (path "rooms/") มาย้ายอัตโนมัติ
+  ให้เปิด "rooms": { "$room": { ".read": true } } ไว้ชั่วคราวจนกว่าทุกห้องจะย้ายเสร็จ
+-->
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
@@ -12,9 +24,9 @@
   *{box-sizing:border-box}
   :root{--hh:60px}
   body{margin:0;font-family:system-ui,-apple-system,"Sarabun",sans-serif;background:#f1f5f9;color:#1e293b;-webkit-tap-highlight-color:transparent}
-  header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+  header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
   header h1{font-size:20px;margin:0;flex:1;white-space:nowrap}
-  header input{padding:6px 10px;border-radius:8px;border:none;font-size:15px;width:140px}
+  header input{padding:6px 10px;border-radius:8px;border:none;font-size:15px;width:120px}
   .stat{font-size:13px;opacity:.9}
   .hbtn{background:rgba(255,255,255,.18);padding:4px 10px;white-space:nowrap}
   #quickbar{flex-basis:100%;display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
@@ -54,14 +66,23 @@
   .task-form button{padding:4px 14px;font-weight:700}
   .task-in,.bed-in{flex:1;min-width:0;padding:6px 8px;border:1px dashed #94a3b8;border-radius:6px;background:#fff}
   .add-bed{display:flex;gap:6px;margin-top:6px}
-  
-  #checklist-section{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:16px}
-  #checklist-section h2{margin:0 0 12px;font-size:18px;color:#0f766e}
+
+  #checklist-section{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  #checklist-section h2{margin:0 0 8px;font-size:18px;color:#0f766e}
   .check-ward-group{margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px}
-  .check-ward-title{font-weight:700;font-size:16px;color:#334155;margin-bottom:6px}
-  .check-item-row{display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:8px;margin-bottom:4px;cursor:pointer}
+  .check-ward-title{font-weight:700;font-size:16px;color:#334155;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+  .check-bed{font-size:13px;font-weight:700;color:#0f766e;margin:8px 0 4px}
+  .check-item-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background .15s}
   .check-item-row:hover{background:#f1f5f9}
-  .check-item-row.done span{text-decoration:line-through;color:#94a3b8}
+  .check-item-row.done{background:#ecfdf5}
+  .check-item-row.done .t-text{text-decoration:line-through;color:#64748b}
+  .t-text{flex:1;min-width:0;word-break:break-word}
+  .who{font-size:11px;color:#64748b;white-space:nowrap;text-align:right}
+  #logBox{margin-top:10px;font-size:13px}
+  #logBox summary{cursor:pointer;color:#0f766e;font-weight:600}
+  .loglist{max-height:220px;overflow:auto;margin-top:6px}
+  .loglist div{padding:3px 0;border-bottom:1px dashed #e2e8f0}
+  .loglist time{color:#94a3b8;margin-right:6px}
 
   #output{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
   #output h2{margin:0 0 8px;font-size:17px}
@@ -70,25 +91,29 @@
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .btns .secondary{background:#e2e8f0;color:#334155}
   .btns .secondary.danger{background:#fee2e2;color:#b91c1c}
+  .btns .line{background:#06c755}
   .hint{font-size:12px;color:#64748b;margin:6px 0 0}
+  .warn{font-size:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px;margin:8px 0}
   dialog{border:none;border-radius:12px;padding:16px;width:min(560px,92vw)}
   dialog h3{margin:0 0 6px}
-  #importText, .dlg-input{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
+  #importText,.dlg-input{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:10;max-width:90vw;text-align:center}
   .toast.show{opacity:1}
 
   body.desktop{min-width:900px}
-  body.desktop main{grid-template-columns:1.2fr 1fr}
-  body.desktop #output{position:sticky;top:calc(var(--hh) + 16px);align-self:start}
+  body.desktop main{grid-template-columns:1.2fr 1fr;grid-template-areas:"ed ck" "ed out";align-items:start}
+  body.desktop #editor{grid-area:ed}
+  body.desktop #checklist-section{grid-area:ck;max-height:46vh;overflow:auto}
+  body.desktop #output{grid-area:out}
 
   #mnav{display:none}
   body.mobile{overflow-x:clip}
   body.mobile header{padding:8px 10px;gap:6px}
   body.mobile header h1{font-size:17px}
-  body.mobile header input{width:105px;font-size:16px}
+  body.mobile header input{width:100px;font-size:15px}
   body.mobile .stat{display:none}
   body.mobile .hbtn .lbl{display:none}
-  body.mobile .hbtn{padding:6px 12px;font-size:16px}
+  body.mobile .hbtn{padding:6px 10px;font-size:15px}
   body.mobile main{padding:10px 10px calc(84px + env(safe-area-inset-bottom));gap:10px}
   body.mobile input,body.mobile textarea{font-size:16px}
   body.mobile button{min-height:40px}
@@ -106,10 +131,9 @@
   body.mobile .row input{padding:10px}
   body.mobile .opts{font-size:15px;gap:18px}
   body.mobile .opts input{width:18px;height:18px;vertical-align:-3px}
-  body.mobile #result{min-height:calc(100vh - var(--hh) - 280px)}
+  body.mobile #result{min-height:calc(100vh - var(--hh) - 300px)}
   body.mobile .btns button{flex:1 1 45%}
-  body.mobile .kbd-only{display:none}
-  
+
   body.mobile.tab-edit #output, body.mobile.tab-edit #checklist-section{display:none}
   body.mobile.tab-check #editor, body.mobile.tab-check #output{display:none}
   body.mobile.tab-out #editor, body.mobile.tab-out #checklist-section{display:none}
@@ -130,6 +154,8 @@
     <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
   </datalist>
   <span class="stat" id="stat"></span>
+  <button id="syncInd" class="hbtn" title="สถานะการซิงค์">⚪</button>
+  <button id="saveCloudBtn" class="hbtn" style="background:#0d9488;font-weight:700" title="บังคับส่งข้อมูลทั้งหมดขึ้นห้อง">💾<span class="lbl"> ส่งขึ้นห้อง</span></button>
   <button id="roomBtn" class="hbtn" title="ตั้งค่าห้องและสมาชิก">⚙️<span class="lbl" id="roomLbl"> ตั้งค่า</span></button>
   <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶<span class="lbl"> ย้อน</span></button>
   <button id="viewBtn" class="hbtn" title="สลับโหมดหน้าจอ"></button>
@@ -151,7 +177,13 @@
 
   <section id="checklist-section">
     <h2>📝 ติ๊กเช็คลิสต์งานรวมทั้งหมด</h2>
+    <div class="opts"><label><input type="checkbox" id="ckPending"> แสดงเฉพาะงานค้าง</label></div>
+    <p class="hint" style="margin-top:-2px;margin-bottom:10px">แตะที่แถวงานเพื่อเปลี่ยนสถานะ เพื่อนในห้องจะเห็นทันที พร้อมชื่อคนติ๊ก</p>
     <div id="checklistContainer"></div>
+    <details id="logBox">
+      <summary>🕘 ความเคลื่อนไหวล่าสุดในห้อง</summary>
+      <div id="logList" class="loglist"><span class="empty">ยังไม่มีข้อมูล (ต้องเชื่อมต่อห้องก่อน)</span></div>
+    </details>
   </section>
 
   <section id="output">
@@ -159,19 +191,20 @@
     <div class="opts">
       <label><input type="checkbox" id="pendingOnly"> เฉพาะงานค้าง ⭕️</label>
       <label><input type="checkbox" id="showDate"> ใส่วันที่</label>
+      <label><input type="checkbox" id="showMember"> ใส่ชื่อผู้บันทึก</label>
     </div>
     <textarea id="result" readonly></textarea>
     <div class="btns">
       <button id="copy">📋 คัดลอกข้อความ</button>
+      <button id="lineBtn" class="line">💬 ส่งเข้า LINE</button>
       <button id="importBtn" class="secondary">📥 นำเข้าข้อความ</button>
       <button id="newDay" class="secondary">🌅 เริ่มวันใหม่</button>
       <button id="clearAll" class="secondary danger">🗑 ล้างทั้งหมด</button>
     </div>
     <p class="hint">
       • พิมพ์งานแล้วกด Enter หรือปุ่ม + · ออกจากช่องแล้วบันทึกให้เอง<br>
-      • ใส่หลายงานพร้อมกัน คั่นด้วย <b>,</b> เช่น <b>plan endo, CXR</b><br>
-      • ขึ้นต้นด้วย <b>/</b> = บันทึกเป็น ✅ ทันที · หมายเหตุใส่ในวงเล็บ<br>
-      • ⚙️ ปุ่มตั้งค่า: ใช้ใส่ชื่อห้องเพื่อซิงค์ข้อมูลร่วมกัน และลงทะเบียนชื่อผู้บันทึกงาน
+      • ทุกการแก้ไขซิงค์ให้ทุกคนในห้องอัตโนมัติ (ไอคอนมุมบนแสดงสถานะ/จำนวนคนออนไลน์) — ปุ่ม 💾 ใช้บังคับส่งซ้ำเมื่ออยากมั่นใจ<br>
+      • ⚙️ ตั้งชื่อผู้ใช้และรหัสห้อง · คัดลอกลิงก์ชวนเพื่อนเข้าห้องได้จากหน้าตั้งค่า
     </p>
   </section>
 </main>
@@ -185,7 +218,7 @@
 
 <dialog id="importDlg">
   <h3>📥 นำเข้าจากข้อความ</h3>
-  <p class="hint">วางข้อความสรุปเดิม ระบบจะแยก ward / เตียง / งานให้</p>
+  <p class="hint">วางข้อความสรุปเดิม ระบบจะแยก ward / เตียง / งาน และรวมเข้ากับข้อมูลปัจจุบัน (ไม่ลบของเดิม)</p>
   <textarea id="importText" rows="12" placeholder="Gyne 1&#10;• 12 ⭕️plan endo ✅CXR"></textarea>
   <div class="btns">
     <button id="doImport">นำเข้า</button>
@@ -193,18 +226,22 @@
   </div>
 </dialog>
 
-<!-- หน้าต่างตั้งค่าห้องและชื่อสมาชิก -->
 <dialog id="roomDlg">
   <h3>⚙️ ตั้งค่าห้องซิงค์ & สมาชิกผู้ใช้งาน</h3>
-  <p class="hint">กรอกชื่อของคุณเพื่อให้เพื่อนร่วมทีมรู้ว่าใครเป็นคนบันทึก/แก้ไขงาน และใส่ชื่อห้องให้ตรงกันเพื่อซิงค์ข้อมูลแบบเรียลไทม์</p>
-  
-  <label style="font-size:14px;font-weight:750;display:block;margin-top:10px">👤 ชื่อของคุณ / ผู้ใช้งาน (Member Name):</label>
+  <p class="hint">กรอกชื่อของคุณเพื่อให้เพื่อนร่วมทีมรู้ว่าใครเพิ่ม/ติ๊กงาน และใส่รหัสห้องให้ตรงกันเพื่อซิงค์ข้อมูล</p>
+
+  <label style="font-size:14px;font-weight:700;display:block;margin-top:10px">👤 ชื่อของคุณ (Member Name):</label>
   <input id="memberNameInput" class="dlg-input" placeholder="เช่น พว.สมศรี, นพ.สมชาย" autocomplete="off">
 
-  <label style="font-size:14px;font-weight:750;display:block;margin-top:5px">☁️ ชื่อห้องซิงค์ข้อมูล (Room Name):</label>
-  <input id="roomInput" class="dlg-input" placeholder="เช่น ward-gyne-room1" autocomplete="off">
-  
-  <div class="btns" style="margin-top:15px">
+  <label style="font-size:14px;font-weight:700;display:block;margin-top:5px">☁️ รหัสห้องซิงค์ (Room):</label>
+  <input id="roomInput" class="dlg-input" placeholder="เช่น ward-a1b2c3d4 (เว้นว่าง = ใช้เฉพาะเครื่องนี้)" autocomplete="off" style="margin-bottom:6px">
+  <div class="btns" style="margin-top:0;margin-bottom:6px">
+    <button id="genRoom" class="secondary" type="button">🎲 สุ่มรหัสห้องใหม่</button>
+    <button id="copyInvite" class="secondary" type="button">🔗 คัดลอกลิงก์ชวนเพื่อน</button>
+  </div>
+  <div class="warn">⚠️ ใครรู้รหัสห้องจะเห็นข้อมูลได้ — ใช้รหัสที่เดายาก และ<b>ห้ามใส่ชื่อ-นามสกุลหรือ HN ผู้ป่วย</b> ให้ใช้เลขเตียงแทน</div>
+
+  <div class="btns" style="margin-top:10px">
     <button id="saveRoom">บันทึกการตั้งค่า</button>
     <button id="cancelRoom" class="secondary">ปิด</button>
   </div>
@@ -213,119 +250,332 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// --- CONFIG FIREBASE ---
-const firebaseConfig = {
-  databaseURL: "https://wardwork-default-rtdb.firebaseio.com/"
-};
-let db = null;
-let currentRoom = localStorage.getItem('wardwork-room') || '';
-let currentMember = localStorage.getItem('wardwork-member') || '';
-let isSyncing = false;
+'use strict';
+/* =====================================================================
+   Ward Work — realtime sync
+   - ข้อมูลที่ซิงค์ (v2/<room>/data) เก็บแบบ "ทีละรายการ" (ward/เตียง/งาน แต่ละอันมี path ของตัวเอง)
+     ทำให้คนละคนแก้คนละงานพร้อมกันได้ ไม่เขียนทับกัน
+   - ตั้งค่าหน้าจอ (เฉพาะงานค้าง, ใส่วันที่, ยุบ ward) เป็นของแต่ละคน ไม่ซิงค์
+   - ออฟไลน์แล้วกลับมา: รวมข้อมูลแบบ 3-way (base / ในเครื่อง / บนเซิร์ฟเวอร์)
+   ===================================================================== */
 
-if (firebaseConfig.databaseURL && !firebase.apps.length) {
-  try { firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e){ console.log(e); }
+/* ---------- helpers ---------- */
+const FB_URL = "https://wardwork-default-rtdb.firebaseio.com/";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+let seq = 0;
+const taskO = () => Date.now() * 100 + (seq++ % 100);
+const encKey = s => encodeURIComponent(String(s)).replace(/\./g, '%2E');   // Firebase key ห้ามมี . # $ [ ] /
+const decKey = s => { try { return decodeURIComponent(s); } catch { return s; } };
+const sanitizeRoom = s => String(s || '').trim().replace(/[.#$\[\]\/\s]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+const bedId = (wid, name) => 'b_' + wid + '_' + encKey(name);
+const q = (attr, id) => `[${attr}="${CSS.escape(String(id))}"]`;
+const byO = (a, b) => (a.o || 0) - (b.o || 0) || String(a.id).localeCompare(String(b.id));
+const sortBeds = beds => beds.sort((a, b) => String(a.bed).localeCompare(String(b.bed), undefined, {numeric:true}));
+function fmtT(ms){
+  if (!ms) return '';
+  const d = new Date(ms), n = new Date();
+  const t = d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+  return d.toDateString() === n.toDateString() ? t : d.toLocaleDateString('th-TH', {day:'numeric', month:'short'}) + ' ' + t;
+}
+function whoText(t){
+  return t.done ? `✓ ${t.doneBy || ''} ${fmtT(t.at)}`.trim() : `+ ${t.by || ''} ${fmtT(t.at)}`.trim();
 }
 
-const KEY = 'wardwork-v1';
-const VKEY = 'wardwork-view';
-const $ = id => document.getElementById(id);
-const uid = () => Math.random().toString(36).slice(2, 9);
+/* ---------- sync data model (pure functions) ---------- */
+// state -> แผนที่ path→ค่า (เฉพาะส่วนที่ซิงค์)
+function flatten(s){
+  const f = {};
+  f['m/round'] = s.round || '';
+  Object.entries(s.freq || {}).forEach(([k, v]) => { f['freq/' + encKey(k)] = v; });
+  s.wards.forEach(w => {
+    const wp = 'wards/' + w.id;
+    f[wp + '/name'] = w.name;
+    f[wp + '/o'] = w.o || 0;
+    w.beds.forEach(b => {
+      const bp = wp + '/beds/' + b.id;
+      f[bp + '/bed'] = b.bed;
+      b.tasks.forEach(t => {
+        const tp = bp + '/tasks/' + t.id;
+        f[tp + '/text'] = t.text;
+        f[tp + '/done'] = !!t.done;
+        f[tp + '/o'] = t.o || 0;
+        if (t.note) f[tp + '/note'] = t.note;
+        if (t.by) f[tp + '/by'] = t.by;
+        if (t.doneBy) f[tp + '/doneBy'] = t.doneBy;
+        if (t.at) f[tp + '/at'] = t.at;
+      });
+    });
+  });
+  return f;
+}
+function flatNested(n, prefix = '', out = {}){
+  if (n === null || n === undefined) return out;
+  if (typeof n === 'object') { for (const k in n) flatNested(n[k], prefix ? prefix + '/' + k : k, out); }
+  else out[prefix] = n;
+  return out;
+}
+function unflatten(f){
+  const root = {};
+  for (const p in f){
+    const parts = p.split('/'); let n = root;
+    for (let i = 0; i < parts.length - 1; i++){
+      if (typeof n[parts[i]] !== 'object' || n[parts[i]] === null) n[parts[i]] = {};
+      n = n[parts[i]];
+    }
+    n[parts[parts.length - 1]] = f[p];
+  }
+  return root;
+}
+function fromNested(n){
+  n = n || {};
+  const freq = {};
+  Object.entries(n.freq || {}).forEach(([k, v]) => { freq[decKey(k)] = v; });
+  const wards = Object.entries(n.wards || {}).map(([id, w]) => ({
+    id, name: w.name ?? '?', o: w.o || 0,
+    beds: sortBeds(Object.entries(w.beds || {}).map(([bid, b]) => ({
+      id: bid, bed: String(b.bed ?? '?'),
+      tasks: Object.entries(b.tasks || {}).map(([tid, t]) => ({
+        id: tid, text: t.text ?? '', note: t.note || '', done: !!t.done, o: t.o || 0,
+        by: t.by || '', doneBy: t.doneBy || '', at: t.at || 0
+      })).filter(t => t.text !== '').sort(byO)
+    })))
+  })).sort(byO);
+  return { wards, freq, round: (n.m && typeof n.m.round === 'string') ? n.m.round : undefined };
+}
+const fromFlat = f => fromNested(unflatten(f));
+function diff(a, b){
+  const u = {};
+  for (const k in a) if (a[k] !== b[k]) u[k] = a[k];
+  for (const k in b) if (!(k in a)) u[k] = null;
+  return u;
+}
+function eqFlat(a, b){
+  const ka = Object.keys(a);
+  if (ka.length !== Object.keys(b).length) return false;
+  for (const k of ka) if (a[k] !== b[k]) return false;
+  return true;
+}
+// B = base (ที่เคยซิงค์ล่าสุด), L = ในเครื่อง, R = บนเซิร์ฟเวอร์
+function merge3(B, L, R){
+  const M = {};
+  const keys = new Set([...Object.keys(B), ...Object.keys(L), ...Object.keys(R)]);
+  for (const k of keys){
+    const b = B[k], l = L[k], r = R[k];
+    const v = (l === r) ? l : (l === b ? r : l);     // ถ้าแก้ชนกันจริง ๆ ให้ยึดของในเครื่อง
+    if (v !== undefined) M[k] = v;
+  }
+  return M;
+}
+function legacyToState(v){      // แปลงข้อมูลห้องเวอร์ชันเก่า (rooms/<room>)
+  const arr = x => Array.isArray(x) ? x : (x ? Object.values(x) : []);
+  return {
+    round: v.round || '', freq: {},
+    wards: arr(v.wards).map((w, i) => ({
+      id: w.id || uid('w'), name: w.name || '?', o: i,
+      beds: arr(w.beds).map(b => ({
+        id: b.id || uid('b'), bed: String(b.bed ?? '?'),
+        tasks: arr(b.tasks).map(t => ({ id: t.id || uid('t'), text: t.text || '', note: t.note || '', done: !!t.done, o: taskO(), by: '', doneBy: '', at: 0 })).filter(t => t.text)
+      }))
+    }))
+  };
+}
+
+/* ---------- local state ---------- */
+const KEY = 'wardwork-v1', VKEY = 'wardwork-view', MKEY = 'wardwork-member', RKEY = 'wardwork-room', CKEY = 'wardwork-collapsed', BKEY = 'wardwork-base-';
 const COMMON = ['plan endo','plan anes','plan eye','plan ID','plan sx','plan uro','plan nephro','plan hemato',
   'plan nephro/hemato','plan med','plan ortho','plan cardio','lab pre op','lab sepsis','ใบ refer','CTPA',
   'CT chest c WA','CXR','EKG','U/S','H/C','F/U lab','ขอเลือด','consent'];
-const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false, showDate:false, freq:{},
-  wards:['Gyne 1','Gyne 2','OB1','OB2'].map(n => ({ id:uid(), name:n, collapsed:false, beds:[] })) });
-
-const wardsEl = $('wards');
-let state = loadLocal();
-let activeBed = null;
-let rendering = false;
-const undoStack = [];
-let lastSnap = JSON.stringify(state);
-
+// id ของ ward เริ่มต้นตายตัว เพื่อให้หลายเครื่องที่เปิดครั้งแรกรวมกันแล้วไม่ซ้ำ
+const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false, showDate:false, showMember:true, freq:{},
+  wards:['Gyne 1','Gyne 2','OB1','OB2'].map((n, i) => ({ id:'w_default_' + i, name:n, o:i, beds:[] })) });
 function loadLocal(){
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && Array.isArray(s.wards)) return { ...DEFAULT(), ...s, freq: s.freq || {} };
+    if (s && Array.isArray(s.wards)){
+      const st = { ...DEFAULT(), ...s, freq: s.freq || {} };
+      st.wards.forEach((w, i) => { if (typeof w.o !== 'number') w.o = i; w.beds = w.beds || []; w.beds.forEach(b => { b.tasks = b.tasks || []; }); });
+      return st;
+    }
   } catch {}
   return DEFAULT();
 }
+let currentRoom = sanitizeRoom(localStorage.getItem(RKEY) || '');
+let currentMember = localStorage.getItem(MKEY) || '';
+const urlRoom = sanitizeRoom(new URLSearchParams(location.search).get('room'));
+if (urlRoom){
+  currentRoom = urlRoom; localStorage.setItem(RKEY, urlRoom);
+  try { history.replaceState(null, '', location.href.split('?')[0]); } catch {}
+}
+let state = loadLocal();
+let collapsed = {}; try { collapsed = JSON.parse(localStorage.getItem(CKEY)) || {}; } catch {}
+let synced = flatten(state);          // สิ่งที่เชื่อว่าเซิร์ฟเวอร์มีอยู่ตอนนี้
+const undoStack = [];                 // เก็บเฉพาะ "ส่วนต่าง" ของแต่ละการแก้ไข {path:[ก่อน,หลัง]}
+let activeBed = null, rendering = false;
+
+const wardsEl = $('wards');
+const roundEl = $('round'), pendEl = $('pendingOnly'), dateEl = $('showDate'), memEl = $('showMember');
+const findWard = id => state.wards.find(w => w.id === id);
+function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w, b}; } return null; }
+const hasTasks = () => state.wards.some(w => w.beds.some(b => b.tasks.length));
+const nextWardO = () => Math.max(-1, ...state.wards.map(w => w.o || 0)) + 1;
+const persistLocal = () => localStorage.setItem(KEY, JSON.stringify(state));
+function setShared(s){ state.wards = s.wards; state.freq = s.freq; if (s.round !== undefined) state.round = s.round; }
+
+/* ---------- Firebase connection ---------- */
+let db = null;
+if (typeof firebase !== 'undefined'){
+  try { if (!firebase.apps.length) firebase.initializeApp({ databaseURL: FB_URL }); db = firebase.database(); }
+  catch (e) { console.error(e); }
+}
+let dataRef = null, presRef = null, listeners = [];
+let phase = 'off';           // off | init | live
+let joined = false, pending = 0, online = false, presence = {}, logs = [];
+const clientId = uid('c');
+const loadBase = room => { try { return JSON.parse(localStorage.getItem(BKEY + room)); } catch { return null; } };
+const persistBase = f => { try { localStorage.setItem(BKEY + currentRoom, JSON.stringify(f)); } catch {} };
+const roomNote = () => joined ? '\n(มีผลกับทุกคนในห้อง)' : '';
+
+function listen(ref, cb){
+  ref.on('value', cb, err => { console.error(err); toast('❌ อ่านข้อมูลห้องไม่ได้ (ตรวจสิทธิ์ Firebase Rules)'); });
+  listeners.push([ref, cb]);
+}
+function disconnectRoom(){
+  listeners.forEach(([r, cb]) => r.off('value', cb)); listeners = [];
+  if (presRef){ try { presRef.onDisconnect().cancel(); presRef.remove(); } catch {} presRef = null; }
+  dataRef = null; joined = false; phase = 'off'; pending = 0; presence = {}; logs = [];
+  renderLog(); updateSync();
+}
+function registerPresence(){
+  if (!db || !currentRoom || !online) return;
+  if (presRef) { try { presRef.onDisconnect().cancel(); } catch {} }
+  presRef = db.ref('v2/' + currentRoom + '/presence/' + clientId);
+  presRef.onDisconnect().remove()
+    .then(() => presRef && presRef.set({ name: currentMember || '?', t: firebase.database.ServerValue.TIMESTAMP }))
+    .catch(() => {});
+}
+function connectRoom(){
+  disconnectRoom();
+  if (!db || !currentRoom){ updateSync(); return; }
+  const root = db.ref('v2/' + currentRoom);
+  dataRef = root.child('data'); phase = 'init';
+  listen(dataRef, onRemote);
+  listen(root.child('presence'), snap => { presence = snap.val() || {}; updateSync(); });
+  listen(root.child('log').limitToLast(30), snap => { logs = Object.values(snap.val() || {}).sort((a, b) => a.t - b.t); renderLog(); });
+  registerPresence(); updateSync();
+}
+
+function onRemote(snap){
+  if (phase === 'init'){ phase = 'initializing'; return initialSync(snap.val()); }
+  if (phase !== 'live') return;
+  const val = snap.val(), R = flatNested(val);
+  if (eqFlat(R, synced)) return;                  // เสียงสะท้อนของที่เราเพิ่งส่ง
+  setShared(fromNested(val)); synced = R;         // มีคนอื่นแก้ไข
+  persistLocal(); if (!pending) persistBase(R);
+  if (document.activeElement !== roundEl) roundEl.value = state.round;
+  whenIdle(() => render());
+}
+
+function initialSync(val){
+  const room = currentRoom;
+  const R = flatNested(val), L = flatten(state), B = loadBase(room);
+  const hasR = Object.keys(R).length > 0;
+  const finish = (M) => {
+    if (currentRoom !== room || !dataRef) return;
+    setShared(fromFlat(M)); synced = M; phase = 'live'; joined = true;
+    const ch = diff(M, R);
+    if (Object.keys(ch).length) push(ch); else persistBase(M);
+    persistLocal(); roundEl.value = state.round; render(); updateSync();
+    registerPresence();
+  };
+  if (!hasR){
+    if (B) return finish(merge3(B, L, R));
+    // ห้องใหม่: ลองย้ายข้อมูลจากเวอร์ชันเก่า ไม่มีก็อัปโหลดข้อมูลในเครื่อง
+    db.ref('rooms/' + room).once('value').then(s => {
+      const v = s.val();
+      if (v && Array.isArray(v.wards)){ toast('ย้ายข้อมูลห้องเดิมมาให้แล้ว'); finish(flatten({ ...legacyToState(v) })); }
+      else { toast('สร้างห้องใหม่และอัปโหลดข้อมูลแล้ว'); finish(L); }
+    }).catch(() => finish(L));
+    return;
+  }
+  if (!B){
+    if (!hasTasks()) return finish(R);
+    const useRemote = confirm(`ห้อง "${room}" มีข้อมูลอยู่แล้ว\n\nกด OK = ใช้ข้อมูลของห้อง (ข้อมูลในเครื่องนี้จะถูกแทนที่)\nกด ยกเลิก = รวมข้อมูลในเครื่องนี้เข้าไปในห้องด้วย`);
+    return finish(useRemote ? R : { ...R, ...L });
+  }
+  finish(merge3(B, L, R));
+}
+
+function push(ch){
+  if (!joined || !dataRef) return;
+  pending++; updateSync();
+  dataRef.update(ch)
+    .then(() => { pending--; if (!pending) persistBase(synced); updateSync(); })
+    .catch(e => { pending--; console.error(e); toast('❌ ซิงค์ไม่สำเร็จ ' + (e.code || '')); updateSync(); });
+}
+function logAct(msg){
+  if (!joined || !currentRoom) return;
+  db.ref('v2/' + currentRoom + '/log').push({ t: firebase.database.ServerValue.TIMESTAMP, by: currentMember || '?', msg }).catch(() => {});
+}
 
 function save(undo = true){
-  const snap = JSON.stringify(state);
-  if (snap !== lastSnap){
-    if (undo){ undoStack.push(lastSnap); if (undoStack.length > 50) undoStack.shift(); }
-    lastSnap = snap;
-    localStorage.setItem(KEY, snap);
-    if (db && currentRoom && !isSyncing) {
-      db.ref('rooms/' + currentRoom).set(state);
+  const nf = flatten(state), ch = diff(nf, synced);
+  if (Object.keys(ch).length){
+    if (undo){
+      const rec = {}; for (const k in ch) rec[k] = [synced[k], nf[k]];
+      undoStack.push(rec); if (undoStack.length > 50) undoStack.shift();
     }
+    synced = nf; push(ch);
   }
-  updateOutput();
-  renderChecklist();
+  persistLocal(); updateOutput(); renderChecklist();
 }
-
-// เปิดระบบ Real-time Listener และเช็คชื่อ Member
-function initSystem(){
-  updateHeaderLabels();
-  // ถ้ายังไม่มีชื่อสมาชิก ให้เด้งหน้าต่างตั้งค่าอัตโนมัติ
-  if (!currentMember) {
-    setTimeout(() => {
-      $('memberNameInput').value = currentMember;
-      $('roomInput').value = currentRoom;
-      $('roomDlg').showModal();
-    }, 500);
-  }
-  
-  if (db && currentRoom) {
-    db.ref('rooms/' + currentRoom).on('value', snapshot => {
-      const val = snapshot.val();
-      if (val && Array.isArray(val.wards)) {
-        isSyncing = true;
-        state = { ...DEFAULT(), ...val, freq: val.freq || {} };
-        lastSnap = JSON.stringify(state);
-        roundEl.value = state.round; 
-        pendEl.checked = state.pendingOnly; 
-        dateEl.checked = state.showDate;
-        render();
-        isSyncing = false;
-      }
-    });
-  }
-}
-
-function updateHeaderLabels(){
-  let labelTxt = ' ตั้งค่า';
-  if (currentMember) labelTxt = ` (${currentMember})`;
-  $('roomLbl').textContent = labelTxt;
-}
-
 function undo(){
-  if (!undoStack.length) return toast('ไม่มีอะไรให้ย้อนแล้ว');
-  state = JSON.parse(undoStack.pop());
-  lastSnap = JSON.stringify(state);
-  localStorage.setItem(KEY, lastSnap);
-  if (db && currentRoom) db.ref('rooms/' + currentRoom).set(state);
-  roundEl.value = state.round; pendEl.checked = state.pendingOnly; dateEl.checked = state.showDate;
-  render(); renderChecklist(); toast('↶ ย้อนกลับแล้ว');
+  const rec = undoStack.pop();
+  if (!rec) return toast('ไม่มีอะไรให้ย้อนแล้ว');
+  const cur = flatten(state);
+  for (const k in rec){ const bv = rec[k][0]; if (bv === undefined) delete cur[k]; else cur[k] = bv; }
+  setShared(fromFlat(cur)); roundEl.value = state.round;
+  save(false); render(); logAct('↶ ย้อนกลับการแก้ไขล่าสุด'); toast('↶ ย้อนกลับแล้ว');
+}
+function manualCloudSave(){
+  if (!currentRoom){ alert('ยังไม่ได้ตั้งรหัสห้อง! กรุณากดปุ่ม ⚙️ ตั้งค่า เพื่อใส่รหัสห้องก่อน'); openRoomDlg(); return; }
+  if (!db){ alert('ไม่สามารถเชื่อมต่อ Firebase ได้ (โหลด SDK ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต)'); return; }
+  if (!joined){ toast('⏳ กำลังเชื่อมต่อห้อง... ถ้าออฟไลน์ ข้อมูลจะส่งอัตโนมัติเมื่อมีเน็ต'); return; }
+  commitDrafts();
+  dataRef.update(flatten(state))
+    .then(() => toast(`💾 ส่งข้อมูลขึ้นห้อง "${currentRoom}" สำเร็จ`))
+    .catch(() => toast('❌ ส่งไม่สำเร็จ โปรดลองอีกครั้ง'));
 }
 
-const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const sortBeds = beds => beds.sort((a,b) => a.bed.localeCompare(b.bed, undefined, {numeric:true}));
-const findWard = id => state.wards.find(w => w.id === id);
-function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w,b}; } return null; }
+function updateSync(){
+  const el = $('syncInd'); if (!el) return;
+  const names = Object.values(presence).map(p => p && p.name).filter(Boolean);
+  let ic, txt, tip;
+  if (!db){ ic = '⚪'; txt = ' ไม่มี Firebase'; tip = 'โหลด Firebase ไม่ได้ — ใช้งานได้เฉพาะเครื่องนี้'; }
+  else if (!currentRoom){ ic = '⚪'; txt = ' ไม่มีห้อง'; tip = 'ยังไม่ได้ตั้งรหัสห้อง — แตะเพื่อตั้งค่า'; }
+  else if (!online){ ic = '🟠'; txt = ' ไม่มีเน็ต'; tip = 'ออฟไลน์ — แก้ไขต่อได้ จะส่งอัตโนมัติเมื่อกลับมาออนไลน์'; }
+  else if (!joined){ ic = '🟡'; txt = ' กำลังเชื่อม'; tip = 'กำลังเชื่อมต่อห้อง'; }
+  else if (pending){ ic = '⏳'; txt = ' กำลังส่ง'; tip = 'กำลังส่งข้อมูลขึ้นห้อง'; }
+  else { ic = '🟢'; txt = ` ${names.length || 1} คน`; tip = `ซิงค์แล้ว · ออนไลน์: ${names.join(', ') || '-'}`; }
+  el.innerHTML = ic + `<span class="lbl">${esc(txt)}</span>`; el.title = tip;
+}
+function renderLog(){
+  const box = $('logList'); if (!box) return;
+  box.innerHTML = logs.length
+    ? logs.slice().reverse().map(l => `<div><time>${esc(fmtT(l.t))}</time><b>${esc(l.by)}</b> ${esc(l.msg)}</div>`).join('')
+    : '<span class="empty">ยังไม่มีความเคลื่อนไหว (ต้องเชื่อมต่อห้องก่อน)</span>';
+}
 
+/* ---------- view mode ---------- */
 const VIEWS = { auto:{ icon:'🔄', name:'อัตโนมัติ' }, mobile:{ icon:'📱', name:'มือถือ' }, desktop:{ icon:'💻', name:'คอม' } };
 let viewPref = localStorage.getItem(VKEY) || 'auto';
 let tab = 'edit', editScroll = 0;
 const mq = matchMedia('(max-width: 899px)');
-
 function currentMode(){ return viewPref === 'auto' ? (mq.matches ? 'mobile' : 'desktop') : viewPref; }
-
 function applyView(){
   const mode = currentMode(), cl = document.body.classList;
-  cl.toggle('mobile', mode === 'mobile');
-  cl.toggle('desktop', mode === 'desktop');
+  cl.toggle('mobile', mode === 'mobile'); cl.toggle('desktop', mode === 'desktop');
   cl.remove('tab-edit', 'tab-check', 'tab-out');
   if (mode === 'mobile') cl.add(`tab-${tab}`);
   const v = VIEWS[viewPref];
@@ -333,32 +583,26 @@ function applyView(){
   document.querySelectorAll('#mnav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setHH();
 }
-
 function cycleView(){
   const order = ['auto', 'mobile', 'desktop'];
   viewPref = order[(order.indexOf(viewPref) + 1) % order.length];
-  localStorage.setItem(VKEY, viewPref);
-  applyView();
-  toast(`โหมด${VIEWS[viewPref].name}`);
+  localStorage.setItem(VKEY, viewPref); applyView(); toast(`โหมด${VIEWS[viewPref].name}`);
 }
-
 function setTab(t){
   if (t === tab) return;
-  if (t === 'out' || t === 'check') { editScroll = window.scrollY; commitDrafts(); }
-  tab = t; applyView();
-  window.scrollTo(0, t === 'edit' ? editScroll : 0);
+  if (t === 'out' || t === 'check'){ editScroll = window.scrollY; commitDrafts(); }
+  tab = t; applyView(); window.scrollTo(0, t === 'edit' ? editScroll : 0);
 }
-
 if (mq.addEventListener) mq.addEventListener('change', applyView); else mq.addListener(applyView);
 
+/* ---------- tasks ---------- */
 function parseTask(str){
   str = str.trim();
   let done = false;
-  if (str.startsWith('/')) { done = true; str = str.slice(1).trim(); }
+  if (str.startsWith('/')){ done = true; str = str.slice(1).trim(); }
   const m = str.match(/^(.*?)\s*\((.*)\)\s*$/);
   return m ? { text:m[1].trim(), note:m[2].trim(), done } : { text:str, note:'', done };
 }
-
 function splitTasks(str){
   str = String(str).replace(/\uFE0F/g, '');
   if (/[⭕✅]/u.test(str)){
@@ -371,136 +615,208 @@ function splitTasks(str){
   const parts = []; let cur = '', depth = 0;
   for (const ch of str){
     if (ch === '(') depth++; else if (ch === ')') depth = Math.max(0, depth - 1);
-    if (depth === 0 && /[,;|\n]/.test(ch)) { parts.push(cur); cur = ''; continue; }
+    if (depth === 0 && /[,;|\n]/.test(ch)){ parts.push(cur); cur = ''; continue; }
     cur += ch;
   }
   parts.push(cur);
   return parts.map(s => s.trim()).filter(Boolean).map(parseTask).filter(t => t.text);
 }
+function setDone(tk, done){ tk.done = done; tk.doneBy = done ? currentMember : ''; tk.at = Date.now(); }
+// คืนรายชื่องานที่เพิ่มจริง
+function addTaskObjs(b, arr, dedupeAll = false){
+  const added = [];
+  arr.forEach(t => {
+    if (b.tasks.some(x => (dedupeAll || !x.done) && x.text === t.text && x.note === (t.note || ''))) return;
+    b.tasks.push({ id: uid('t'), text: t.text, note: t.note || '', done: !!t.done, o: taskO(),
+      by: currentMember, doneBy: t.done ? currentMember : '', at: Date.now() });
+    state.freq[t.text] = (state.freq[t.text] || 0) + 1;
+    added.push(t.text);
+  });
+  return added;
+}
+function addTasks(bedIdVal, val){
+  const f = findBed(bedIdVal); if (!f) return 0;
+  const added = addTaskObjs(f.b, splitTasks(val));
+  if (added.length) logAct(`➕ ${f.w.name} เตียง ${f.b.bed}: ${added.join(', ')}`);
+  return added.length;
+}
+function makeBed(w, name){
+  let id = bedId(w.id, name);               // id คงที่ตามชื่อเตียง: สองคนเพิ่มเตียงเดียวกันพร้อมกันจะรวมกันเอง
+  if (w.beds.some(x => x.id === id)) id = uid('b');
+  const b = { id, bed: name, tasks: [] }; w.beds.push(b); return b;
+}
+function addBed(wardId){
+  const input = wardsEl.querySelector(q('data-bedin', wardId));
+  const raw = input.value.trim(); if (!raw) return;
+  let bedPart = raw, taskPart = '';
+  const ci = raw.indexOf(':');
+  if (ci >= 0){ bedPart = raw.slice(0, ci); taskPart = raw.slice(ci + 1).trim(); }
+  const names = bedPart.split(/[\s,]+/).filter(Boolean); if (!names.length) return;
+  const w = findWard(wardId); const ids = [], created = [];
+  names.forEach(n => {
+    let b = w.beds.find(x => x.bed === n);
+    if (!b){ b = makeBed(w, n); created.push(n); }
+    ids.push(b.id);
+  });
+  if (created.length) logAct(`🛏 ${w.name}: เพิ่มเตียง ${created.join(', ')}`);
+  if (taskPart) ids.forEach(id => addTasks(id, taskPart));
+  input.value = '';
+  sortBeds(w.beds); save();
+  if (ids.length === 1) activeBed = ids[0];
+  render(!taskPart && ids.length === 1 ? q('data-taskin', ids[0]) : q('data-bedin', wardId));
+}
+function commitDrafts(){
+  let n = 0;
+  wardsEl.querySelectorAll('[data-taskin]').forEach(i => { if (i.value.trim()){ n += addTasks(i.dataset.taskin, i.value); i.value = ''; } });
+  if (n){ save(); render(); }
+  return n;
+}
 
+/* ---------- import ---------- */
+function parseImport(text){
+  const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+  const isBed = l => /^[•·\-\*▪●]/.test(l);
+  const out = { round: null, wards: [] }; let cur = null;
+  lines.forEach((l, i) => {
+    if (isBed(l)){
+      if (!cur) return;
+      const m = l.replace(/^[•·\-\*▪●]\s*/, '').match(/^(\S+)\s*(.*)$/);
+      if (m) cur.beds.push({ bed: m[1].replace(/[:：]$/, ''), tasks: splitTasks(m[2]) });
+    } else {
+      const next = lines[i + 1];
+      if (next && isBed(next)){ cur = { name: l, beds: [] }; out.wards.push(cur); }
+      else if (!out.wards.length && out.round === null) out.round = l.replace(/\s*\(ผู้บันทึก:.*\)\s*$/, '').trim();
+    }
+  });
+  return out;
+}
+
+/* ---------- rendering ---------- */
 function tasksHTML(b){
   if (!b.tasks.length) return '<span class="empty">ยังไม่มีงาน</span>';
   return b.tasks.map(t => `
     <span class="task ${t.done ? 'done' : ''}">
-      <button class="st" data-act="toggle" data-bed="${b.id}" data-task="${t.id}">${t.done ? '✅' : '⭕️'}</button>
-      <span class="tt" data-act="edit" data-bed="${b.id}" data-task="${t.id}">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
-      <button class="x" data-act="delTask" data-bed="${b.id}" data-task="${t.id}">×</button>
+      <button class="st" data-act="toggle" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">${t.done ? '✅' : '⭕️'}</button>
+      <span class="tt" title="${esc(whoText(t))}" data-act="edit" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+      <button class="x" data-act="delTask" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">×</button>
     </span>`).join('');
 }
-
 function renderChecklist(){
-  const container = $('checklistContainer');
+  const only = $('ckPending').checked;
   let html = '';
   state.wards.forEach(w => {
-    if (!w.beds.length) return;
-    let wardHtml = '';
+    let wh = '', done = 0, tot = 0;
     w.beds.forEach(b => {
       if (!b.tasks.length) return;
+      let bh = '';
       b.tasks.forEach(t => {
-        wardHtml += `
-          <div class="check-item-row ${t.done ? 'done' : ''}" data-act="toggleCheck" data-bed="${b.id}" data-task="${t.id}">
-            <span>${t.done ? '✅' : '⭕️'}</span>
-            <strong>เตียง ${esc(b.bed)}:</strong>
-            <span style="flex:1">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+        tot++; if (t.done) done++;
+        if (only && t.done) return;
+        bh += `
+          <div class="check-item-row ${t.done ? 'done' : ''}" data-act="toggleCheck" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">
+            <span class="t-icon">${t.done ? '✅' : '⭕️'}</span>
+            <span class="t-text">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+            <span class="who">${esc(whoText(t))}</span>
           </div>`;
       });
+      if (bh) wh += `<div class="check-bed">เตียง ${esc(b.bed)}</div>` + bh;
     });
-    if (wardHtml) html += `<div class="check-ward-group"><div class="check-ward-title">${esc(w.name)}</div>${wardHtml}</div>`;
+    if (wh) html += `<div class="check-ward-group"><div class="check-ward-title">${esc(w.name)} <span class="badge ${done === tot ? 'ok' : ''}">${done}/${tot}</span></div>${wh}</div>`;
   });
-  container.innerHTML = html || '<p class="empty">ยังไม่มีงานในระบบ</p>';
+  $('checklistContainer').innerHTML = html || `<p class="empty">${only ? 'ไม่มีงานค้าง 🎉' : 'ยังไม่มีงานในระบบ'}</p>`;
 }
-
 function focusKey(el){
   if (!el || !el.dataset) return null;
-  if (el.dataset.taskin) return `[data-taskin="${el.dataset.taskin}"]`;
-  if (el.dataset.bedin) return `[data-bedin="${el.dataset.bedin}"]`;
-  if (el.classList.contains('bed-no')) return `.bed-no[data-bed="${el.dataset.bed}"]`;
-  if (el.classList.contains('ward-name')) return `.ward-name[data-ward="${el.dataset.ward}"]`;
+  if (el.dataset.taskin) return q('data-taskin', el.dataset.taskin);
+  if (el.dataset.bedin) return q('data-bedin', el.dataset.bedin);
+  if (el.classList.contains('bed-no')) return '.bed-no' + q('data-bed', el.dataset.bed);
+  if (el.classList.contains('ward-name')) return '.ward-name' + q('data-ward', el.dataset.ward);
   return null;
 }
-
 function render(focusSel){
   rendering = true;
   const drafts = {};
   wardsEl.querySelectorAll('[data-taskin],[data-bedin]').forEach(i => { const k = focusKey(i); if (i.value && k) drafts[k] = i.value; });
-  const keep = focusSel || focusKey(document.activeElement);
+  const ae = document.activeElement;
+  const selS = ae && ae.selectionStart, selE = ae && ae.selectionEnd;
+  const keep = focusSel || focusKey(ae);
   if (activeBed && !findBed(activeBed)) activeBed = null;
 
   wardsEl.innerHTML = state.wards.map(w => `
-    <div class="ward ${w.collapsed ? 'collapsed' : ''}">
+    <div class="ward ${collapsed[w.id] ? 'collapsed' : ''}">
       <div class="ward-head">
-        <button class="icon" data-act="collapse" data-ward="${w.id}">${w.collapsed ? '▸' : '▾'}</button>
-        <input class="ward-name" data-ward="${w.id}" value="${esc(w.name)}" enterkeyhint="done">
-        <span class="badge" data-badge="${w.id}"></span>
-        <button class="icon" data-act="copyWard" data-ward="${w.id}">📋</button>
-        <button class="icon" data-act="up" data-ward="${w.id}">▲</button>
-        <button class="icon danger" data-act="delWard" data-ward="${w.id}">🗑</button>
+        <button class="icon" data-act="collapse" data-ward="${esc(w.id)}">${collapsed[w.id] ? '▸' : '▾'}</button>
+        <input class="ward-name" data-ward="${esc(w.id)}" value="${esc(w.name)}" enterkeyhint="done">
+        <span class="badge" data-badge="${esc(w.id)}"></span>
+        <button class="icon" data-act="copyWard" data-ward="${esc(w.id)}">📋</button>
+        <button class="icon" data-act="up" data-ward="${esc(w.id)}">▲</button>
+        <button class="icon danger" data-act="delWard" data-ward="${esc(w.id)}">🗑</button>
       </div>
       <div class="body">
         ${w.beds.map(b => `
-          <div class="bed ${b.id === activeBed ? 'active' : ''}" data-bedbox="${b.id}">
+          <div class="bed ${b.id === activeBed ? 'active' : ''}" data-bedbox="${esc(b.id)}">
             <div class="bed-head">
-              <input class="bed-no" data-bed="${b.id}" value="${esc(b.bed)}" enterkeyhint="done">
+              <input class="bed-no" data-bed="${esc(b.id)}" value="${esc(b.bed)}" enterkeyhint="done">
               <span style="flex:1"></span>
-              <button class="icon" data-act="allDone" data-bed="${b.id}">✓ ทั้งเตียง</button>
-              <button class="icon danger" data-act="delBed" data-bed="${b.id}">✕</button>
+              <button class="icon" data-act="allDone" data-bed="${esc(b.id)}">✓ ทั้งเตียง</button>
+              <button class="icon danger" data-act="delBed" data-bed="${esc(b.id)}">✕</button>
             </div>
-            <div class="tasks" data-tasks="${b.id}">${tasksHTML(b)}</div>
-            <form class="task-form" data-taskform="${b.id}">
-              <input class="task-in" list="taskList" data-taskin="${b.id}" autocomplete="off" enterkeyhint="enter" placeholder="+ งาน (คั่นด้วย , )">
+            <div class="tasks" data-tasks="${esc(b.id)}">${tasksHTML(b)}</div>
+            <form class="task-form" data-taskform="${esc(b.id)}">
+              <input class="task-in" list="taskList" data-taskin="${esc(b.id)}" autocomplete="off" enterkeyhint="enter" placeholder="+ งาน (คั่นด้วย , )">
               <button type="submit" data-keepfocus>+</button>
             </form>
           </div>`).join('')}
-        <form class="add-bed" data-bedform="${w.id}">
-          <input class="bed-in" data-bedin="${w.id}" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น 3 6 หรือ 12: CXR">
+        <form class="add-bed" data-bedform="${esc(w.id)}">
+          <input class="bed-in" data-bedin="${esc(w.id)}" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น 3 6 หรือ 12: CXR">
           <button type="submit" data-keepfocus>+ เตียง</button>
         </form>
       </div>
     </div>`).join('');
 
-  for (const [sel, v] of Object.entries(drafts)) { const i = wardsEl.querySelector(sel); if (i) i.value = v; }
-  if (keep) { const f = wardsEl.querySelector(keep); if (f) f.focus(); }
+  for (const [sel, v] of Object.entries(drafts)){ const i = wardsEl.querySelector(sel); if (i) i.value = v; }
+  if (keep){
+    const f = wardsEl.querySelector(keep);
+    if (f){ f.focus(); if (!focusSel && typeof selS === 'number'){ try { f.setSelectionRange(selS, selE); } catch {} } }
+  }
   rendering = false;
   updateDatalist(); updateQuickbar(); updateOutput(); renderChecklist();
 }
-
 function refreshBed(id){
-  const f = findBed(id), box = wardsEl.querySelector(`[data-tasks="${id}"]`);
+  const f = findBed(id), box = wardsEl.querySelector(q('data-tasks', id));
   if (f && box) box.innerHTML = tasksHTML(f.b);
   updateDatalist(); updateOutput(); renderChecklist();
 }
-
 function updateDatalist(){
   const set = new Set(COMMON);
   Object.keys(state.freq).forEach(t => set.add(t));
   state.wards.forEach(w => w.beds.forEach(b => b.tasks.forEach(t => set.add(t.text))));
   $('taskList').innerHTML = [...set].map(t => `<option value="${esc(t)}">`).join('');
 }
-
 function updateQuickbar(){
   const qb = $('quickbar'), f = activeBed && findBed(activeBed);
-  if (!f) { qb.hidden = true; setHH(); return; }
+  if (!f){ qb.hidden = true; setHH(); return; }
   qb.hidden = false;
   $('qbLabel').textContent = `⚡ ${f.w.name} · ${f.b.bed}:`;
   const all = [...new Set([...Object.keys(state.freq), ...COMMON])]
-    .sort((a,b) => (state.freq[b] || 0) - (state.freq[a] || 0)).slice(0, 16);
+    .sort((a, b) => (state.freq[b] || 0) - (state.freq[a] || 0)).slice(0, 16);
   $('chips').innerHTML = all.map(t => `<button class="chip" data-chip="${esc(t)}">${esc(t)}</button>`).join('');
   setHH();
 }
 function setHH(){ document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px'); }
-
 function setActive(id){
   if (activeBed === id) return;
   activeBed = id;
   wardsEl.querySelectorAll('.bed.active').forEach(x => x.classList.remove('active'));
-  const bx = wardsEl.querySelector(`[data-bedbox="${id}"]`); if (bx) bx.classList.add('active');
+  const bx = wardsEl.querySelector(q('data-bedbox', id)); if (bx) bx.classList.add('active');
   updateQuickbar();
 }
 
+/* ---------- output text ---------- */
 function headerText(){
   let h = state.round || '';
   if (state.showDate) h += ' ' + new Date().toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
-  if (currentMember) h += ` (ผู้บันทึก: ${currentMember})`;
+  if (state.showMember !== false && currentMember) h += ` (ผู้บันทึก: ${currentMember})`;
   return h.trim();
 }
 function wardText(w){
@@ -515,89 +831,46 @@ function buildText(){
   const blocks = state.wards.map(wardText).filter(Boolean);
   return `${headerText()}\n${blocks.join('\n\n')}`.trim();
 }
-
 function updateOutput(){
   $('result').value = buildText();
   let p = 0, d = 0;
   state.wards.forEach(w => {
     let wp = 0;
     w.beds.forEach(b => b.tasks.forEach(t => t.done ? d++ : (p++, wp++)));
-    const el = wardsEl.querySelector(`[data-badge="${w.id}"]`);
-    if (el) { el.textContent = wp ? `⭕️ ${wp}` : (w.beds.length ? '✓ ครบ' : ''); el.className = 'badge' + (wp ? '' : ' ok'); }
+    const el = wardsEl.querySelector(q('data-badge', w.id));
+    if (el){ el.textContent = wp ? `⭕️ ${wp}` : (w.beds.length ? '✓ ครบ' : ''); el.className = 'badge' + (wp ? '' : ' ok'); }
   });
   $('stat').textContent = `⭕️ ${p}  ✅ ${d}`;
   $('navCount').textContent = p ? `(⭕️${p})` : '';
 }
 
-function addTasks(bedId, val){
-  const f = findBed(bedId); if (!f) return 0;
-  let n = 0;
-  splitTasks(val).forEach(t => {
-    if (f.b.tasks.some(x => !x.done && x.text === t.text && x.note === t.note)) return;
-    f.b.tasks.push({ id:uid(), ...t });
-    state.freq[t.text] = (state.freq[t.text] || 0) + 1;
-    n++;
-  });
-  return n;
-}
-
-function addBed(wardId){
-  const input = wardsEl.querySelector(`[data-bedin="${wardId}"]`);
-  const raw = input.value.trim(); if (!raw) return;
-  let bedPart = raw, taskPart = '';
-  const ci = raw.indexOf(':');
-  if (ci >= 0) { bedPart = raw.slice(0, ci); taskPart = raw.slice(ci + 1).trim(); }
-  const names = bedPart.split(/[\s,]+/).filter(Boolean); if (!names.length) return;
-  const w = findWard(wardId); const ids = [];
-  names.forEach(n => {
-    let b = w.beds.find(x => x.bed === n);
-    if (!b) { b = { id:uid(), bed:n, tasks:[] }; w.beds.push(b); }
-    ids.push(b.id);
-  });
-  if (taskPart) ids.forEach(id => addTasks(id, taskPart));
-  input.value = '';
-  sortBeds(w.beds); save();
-  if (ids.length === 1) activeBed = ids[0];
-  render(!taskPart && ids.length === 1 ? `[data-taskin="${ids[0]}"]` : `[data-bedin="${wardId}"]`);
-}
-
-function commitDrafts(){
-  let n = 0;
-  wardsEl.querySelectorAll('[data-taskin]').forEach(i => { if (i.value.trim()) { n += addTasks(i.dataset.taskin, i.value); i.value = ''; } });
-  if (n) { save(); render(); }
-  return n;
-}
-
-let pointerDown = false, pending = [];
+/* ---------- events ---------- */
+let pointerDown = false, pending_ui = [];
 document.addEventListener('pointerdown', () => pointerDown = true, true);
-const release = () => { pointerDown = false; if (pending.length) setTimeout(() => { const p = pending; pending = []; p.forEach(f => f()); }, 0); };
+const release = () => { pointerDown = false; if (pending_ui.length) setTimeout(() => { const p = pending_ui; pending_ui = []; p.forEach(f => f()); }, 0); };
 document.addEventListener('pointerup', release, true);
 document.addEventListener('pointercancel', release, true);
-const whenIdle = fn => pointerDown ? pending.push(fn) : fn();
+const whenIdle = fn => pointerDown ? pending_ui.push(fn) : fn();
 document.addEventListener('mousedown', e => { if (e.target.closest('[data-keepfocus]')) e.preventDefault(); });
 
 wardsEl.addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target;
-  if (f.dataset.taskform) {
+  if (f.dataset.taskform){
     const id = f.dataset.taskform, inp = f.querySelector('input');
     const v = inp.value; inp.value = '';
-    if (addTasks(id, v)) { save(); render(`[data-taskin="${id}"]`); }
+    if (addTasks(id, v)){ save(); render(q('data-taskin', id)); }
     else { if (v.trim()) toast('งานนี้มีอยู่แล้ว'); inp.focus(); }
   } else if (f.dataset.bedform) addBed(f.dataset.bedform);
 });
-
 wardsEl.addEventListener('focusout', e => {
   if (rendering) return;
   const id = e.target.dataset && e.target.dataset.taskin;
   if (!id || !e.target.value.trim()) return;
   const v = e.target.value; e.target.value = '';
-  if (addTasks(id, v)) { save(); whenIdle(() => refreshBed(id)); toast('บันทึกงานที่พิมพ์ค้างไว้แล้ว'); }
+  if (addTasks(id, v)){ save(); whenIdle(() => refreshBed(id)); toast('บันทึกงานที่พิมพ์ค้างไว้แล้ว'); }
 });
-
-wardsEl.addEventListener('focusin', e => {
-  const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox);
-});
+wardsEl.addEventListener('focusin', e => { const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox); });
 
 wardsEl.addEventListener('click', e => {
   const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox);
@@ -607,34 +880,41 @@ wardsEl.addEventListener('click', e => {
   const fb = bed ? findBed(bed) : null;
   if ((ward && !w) || (bed && !fb)) return;
 
-  switch (act) {
-    case 'collapse': w.collapsed = !w.collapsed; break;
+  switch (act){
+    case 'collapse':
+      collapsed[w.id] = !collapsed[w.id]; localStorage.setItem(CKEY, JSON.stringify(collapsed)); break;
     case 'copyWard': return copyText(wardText(w) || `${w.name}\n(ไม่มีงาน)`);
     case 'up': {
       const i = state.wards.indexOf(w);
-      if (i > 0) [state.wards[i-1], state.wards[i]] = [state.wards[i], state.wards[i-1]];
+      if (i > 0){ const p = state.wards[i - 1]; state.wards.splice(i - 1, 2, w, p); state.wards.forEach((x, k) => x.o = k); }
       break;
     }
     case 'delWard':
-      if (!confirm(`ลบ ${w.name} ทั้ง ward?`)) return;
-      state.wards = state.wards.filter(x => x !== w); break;
+      if (!confirm(`ลบ ${w.name} ทั้ง ward?` + roomNote())) return;
+      state.wards = state.wards.filter(x => x !== w); logAct(`🗑 ลบ ward ${w.name}`); break;
     case 'delBed':
-      if (fb.b.tasks.length && !confirm(`ลบเตียง ${fb.b.bed}?`)) return;
-      fb.w.beds = fb.w.beds.filter(x => x !== fb.b); break;
+      if (fb.b.tasks.length && !confirm(`ลบเตียง ${fb.b.bed}?` + roomNote())) return;
+      fb.w.beds = fb.w.beds.filter(x => x !== fb.b); logAct(`✕ ${fb.w.name}: ลบเตียง ${fb.b.bed}`); break;
     case 'allDone': {
       if (!fb.b.tasks.length) return;
       const all = fb.b.tasks.every(x => x.done);
-      fb.b.tasks.forEach(x => x.done = !all); break;
+      fb.b.tasks.forEach(x => setDone(x, !all));
+      logAct(`${all ? '⭕️' : '✅'} ${fb.w.name} เตียง ${fb.b.bed}: ทั้งเตียง`); break;
     }
     case 'toggle': case 'delTask': case 'edit': {
       const tk = fb.b.tasks.find(x => x.id === task); if (!tk) return;
-      if (act === 'toggle') tk.done = !tk.done;
-      if (act === 'delTask') fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
-      if (act === 'edit') {
+      if (act === 'toggle'){ setDone(tk, !tk.done); logAct(`${tk.done ? '✅' : '⭕️'} ${fb.w.name} เตียง ${fb.b.bed}: ${tk.text}`); }
+      if (act === 'delTask'){ fb.b.tasks = fb.b.tasks.filter(x => x !== tk); logAct(`× ${fb.w.name} เตียง ${fb.b.bed}: ลบงาน ${tk.text}`); }
+      if (act === 'edit'){
         const v = prompt('แก้ไขงาน', (tk.done ? '/' : '') + tk.text + (tk.note ? ` (${tk.note})` : ''));
         if (v === null) return;
         if (!v.trim()) fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
-        else { const p = parseTask(v); if (!p.text) return; tk.text = p.text; tk.note = p.note; tk.done = p.done; }
+        else {
+          const p = parseTask(v); if (!p.text) return;
+          tk.text = p.text; tk.note = p.note; tk.at = Date.now();
+          if (p.done !== tk.done) setDone(tk, p.done);
+          logAct(`✏️ ${fb.w.name} เตียง ${fb.b.bed}: ${tk.text}`);
+        }
       }
       break;
     }
@@ -644,29 +924,24 @@ wardsEl.addEventListener('click', e => {
 });
 
 $('checklistContainer').addEventListener('click', e => {
-  const row = e.target.closest('[data-act="toggleCheck"]');
-  if (!row) return;
+  const row = e.target.closest('[data-act="toggleCheck"]'); if (!row) return;
   const { bed, task } = row.dataset;
-  const fb = findBed(bed);
-  if (!fb) return;
-  const tk = fb.b.tasks.find(x => x.id === task);
-  if (!tk) return;
-  tk.done = !tk.done;
-  save(); render();
+  const fb = findBed(bed); if (!fb) return;
+  const tk = fb.b.tasks.find(x => x.id === task); if (!tk) return;
+  setDone(tk, !tk.done);
+  logAct(`${tk.done ? '✅' : '⭕️'} ${fb.w.name} เตียง ${fb.b.bed}: ${tk.text}`);
+  save(); refreshBed(bed);
 });
+$('ckPending').onchange = renderChecklist;
 
 wardsEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.target.classList.contains('bed-no') || e.target.classList.contains('ward-name'))) {
-    e.preventDefault(); e.target.blur();
-  }
+  if (e.key === 'Enter' && (e.target.classList.contains('bed-no') || e.target.classList.contains('ward-name'))){ e.preventDefault(); e.target.blur(); }
 });
-
 wardsEl.addEventListener('input', e => {
   const d = e.target.dataset;
-  if (e.target.classList.contains('ward-name')) { const w = findWard(d.ward); if (w) { w.name = e.target.value; save(false); } }
-  if (e.target.classList.contains('bed-no')) { const f = findBed(d.bed); if (f) { f.b.bed = e.target.value; save(false); } }
+  if (e.target.classList.contains('ward-name')){ const w = findWard(d.ward); if (w){ w.name = e.target.value; save(false); } }
+  if (e.target.classList.contains('bed-no')){ const f = findBed(d.bed); if (f){ f.b.bed = e.target.value; save(false); } }
 });
-
 wardsEl.addEventListener('change', e => {
   if (!e.target.classList.contains('bed-no')) return;
   const f = findBed(e.target.dataset.bed); if (!f) return;
@@ -674,89 +949,77 @@ wardsEl.addEventListener('change', e => {
   sortBeds(f.w.beds); save();
   whenIdle(() => render());
 });
-
 $('chips').addEventListener('click', e => {
   const c = e.target.closest('[data-chip]'); if (!c || !activeBed) return;
-  if (addTasks(activeBed, c.dataset.chip)) { save(); refreshBed(activeBed); toast(`+ ${c.dataset.chip}`); }
+  if (addTasks(activeBed, c.dataset.chip)){ save(); refreshBed(activeBed); toast(`+ ${c.dataset.chip}`); }
   else toast('งานนี้มีอยู่แล้ว');
 });
-
 $('wardForm').addEventListener('submit', e => {
   e.preventDefault();
   const i = $('newWard'), name = i.value.trim(); if (!name) return;
-  state.wards.push({ id:uid(), name, collapsed:false, beds:[] });
+  state.wards.push({ id: uid('w'), name, o: nextWardO(), beds: [] });
+  logAct(`➕ เพิ่ม ward ${name}`);
   i.value = ''; save(); render();
 });
 
-const roundEl = $('round');
 roundEl.value = state.round;
 roundEl.addEventListener('input', () => { state.round = roundEl.value; save(false); });
-
-const pendEl = $('pendingOnly');
-pendEl.checked = state.pendingOnly;
-pendEl.onchange = () => { state.pendingOnly = pendEl.checked; save(); };
-
-const dateEl = $('showDate');
-dateEl.checked = state.showDate;
-dateEl.onchange = () => { state.showDate = dateEl.checked; save(); };
+pendEl.checked = state.pendingOnly; pendEl.onchange = () => { state.pendingOnly = pendEl.checked; save(); };
+dateEl.checked = state.showDate;    dateEl.onchange = () => { state.showDate = dateEl.checked; save(); };
+memEl.checked = state.showMember !== false; memEl.onchange = () => { state.showMember = memEl.checked; save(); };
 
 $('undoBtn').onclick = undo;
 $('viewBtn').onclick = cycleView;
+$('saveCloudBtn').onclick = manualCloudSave;
 document.querySelectorAll('#mnav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
-
-// จัดการปุ่มตั้งค่าห้องและสมาชิก
-const roomDlg = $('roomDlg');
-$('roomBtn').onclick = () => { 
-  $('memberNameInput').value = currentMember;
-  $('roomInput').value = currentRoom; 
-  roomDlg.showModal(); 
+$('syncInd').onclick = () => {
+  if (!currentRoom) return openRoomDlg();
+  const names = Object.values(presence).map(p => p && p.name).filter(Boolean);
+  toast(`ห้อง ${currentRoom} · ออนไลน์: ${names.join(', ') || '-'}`);
 };
-$('cancelRoom').onclick = () => roomDlg.close();
 
+/* ---------- room dialog ---------- */
+const roomDlg = $('roomDlg');
+function openRoomDlg(){ $('memberNameInput').value = currentMember; $('roomInput').value = currentRoom; roomDlg.showModal(); }
+function updateHeaderLabels(){ $('roomLbl').textContent = currentMember ? ` (${currentMember})` : ' ตั้งค่า'; }
+$('roomBtn').onclick = openRoomDlg;
+$('cancelRoom').onclick = () => roomDlg.close();
+$('genRoom').onclick = () => {
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(8)), b => (b % 36).toString(36)).join('');
+  $('roomInput').value = 'ward-' + code;
+};
+$('copyInvite').onclick = () => {
+  const r = sanitizeRoom($('roomInput').value);
+  if (!r) return toast('ใส่หรือสุ่มรหัสห้องก่อน');
+  copyText(location.href.split(/[?#]/)[0] + '?room=' + encodeURIComponent(r));
+};
 $('saveRoom').onclick = () => {
   const m = $('memberNameInput').value.trim();
-  const r = $('roomInput').value.trim();
-  
-  if (!m) {
-    alert('กรุณากรอกชื่อผู้ใช้งานก่อนบันทึก');
-    $('memberNameInput').focus();
-    return;
-  }
-
-  currentMember = m;
-  currentRoom = r;
-  localStorage.setItem('wardwork-member', m);
-  localStorage.setItem('wardwork-room', r);
-  roomDlg.close();
-  updateHeaderLabels();
-
-  if (r && db) {
-    db.ref('rooms/' + r).once('value', snapshot => {
-      if (snapshot.val()) {
-        toast('เชื่อมต่อห้องและดึงข้อมูลสำเร็จ');
-      } else {
-        db.ref('rooms/' + r).set(state);
-        toast('สร้างห้องใหม่และอัปโหลดข้อมูลเรียบร้อย');
-      }
-    });
-    setTimeout(() => { location.reload(); }, 600); // รีโหลดเพื่อให้ซิงค์ห้องใหม่สมบูรณ์
-  } else {
-    toast('บันทึกข้อมูลเรียบร้อย');
-    updateOutput();
-  }
+  const r = sanitizeRoom($('roomInput').value);
+  if (!m){ alert('กรุณากรอกชื่อผู้ใช้งานก่อนบันทึก'); $('memberNameInput').focus(); return; }
+  const changed = r !== currentRoom;
+  currentMember = m; currentRoom = r;
+  localStorage.setItem(MKEY, m); localStorage.setItem(RKEY, r);
+  roomDlg.close(); updateHeaderLabels();
+  if (changed){
+    if (!r){ disconnectRoom(); toast('ใช้งานเฉพาะเครื่องนี้ (ไม่ซิงค์)'); }
+    else if (db){ connectRoom(); toast(`กำลังเชื่อมต่อห้อง "${r}"`); }
+    else toast('โหลด Firebase ไม่ได้ — ตรวจสอบอินเทอร์เน็ต');
+  } else if (presRef) presRef.update({ name: m }).catch(() => {});
+  updateOutput(); updateSync();
 };
 
+/* ---------- misc ---------- */
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)) {
-    e.preventDefault(); undo();
-  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)){ e.preventDefault(); undo(); }
 });
+window.addEventListener('beforeunload', e => { if (pending > 0){ e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('resize', setHH);
 
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('show'), 1500);
+  clearTimeout(toast.tm); toast.tm = setTimeout(() => t.classList.remove('show'), 2200);
 }
-
 async function copyText(text){
   try { await navigator.clipboard.writeText(text); }
   catch {
@@ -766,39 +1029,62 @@ async function copyText(text){
   }
   toast('คัดลอกแล้ว ✓');
 }
-
 const copyAll = () => { commitDrafts(); copyText(buildText()); };
 $('copy').onclick = copyAll;
 $('mCopy').onclick = copyAll;
+$('lineBtn').onclick = () => { commitDrafts(); window.open('https://line.me/R/msg/text/?' + encodeURIComponent(buildText()), '_blank'); };
 
 $('newDay').onclick = () => {
   commitDrafts();
-  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง')) return;
+  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง' + roomNote())) return;
   state.wards.forEach(w => {
     w.beds.forEach(b => b.tasks = b.tasks.filter(t => !t.done));
     w.beds = w.beds.filter(b => b.tasks.length);
   });
-  save(); render(); toast('เริ่มวันใหม่แล้ว');
+  if (joined) db.ref('v2/' + currentRoom + '/log').remove().catch(() => {});
+  save(); render(); logAct('🌅 เริ่มวันใหม่ (ลบงานที่เสร็จแล้ว)'); toast('เริ่มวันใหม่แล้ว');
 };
-
 $('clearAll').onclick = () => {
-  if (!confirm('ล้างเตียงและงานทั้งหมด?')) return;
+  if (!confirm('ล้างเตียงและงานทั้งหมด?' + roomNote())) return;
   state.wards.forEach(w => w.beds = []);
-  save(); render(); toast('ล้างแล้ว');
+  save(); render(); logAct('🗑 ล้างเตียงและงานทั้งหมด'); toast('ล้างแล้ว');
 };
 
 const dlg = $('importDlg');
 $('importBtn').onclick = () => { $('importText').value = ''; dlg.showModal(); };
 $('cancelImport').onclick = () => dlg.close();
 $('doImport').onclick = () => {
+  const p = parseImport($('importText').value);
+  if (!p.wards.length){ toast('ไม่พบ ward / เตียง ในข้อความ (เตียงต้องขึ้นต้นด้วย •)'); return; }
+  let nb = 0, nt = 0;
+  p.wards.forEach(pw => {
+    let w = state.wards.find(x => x.name.trim().toLowerCase() === pw.name.trim().toLowerCase());
+    if (!w){ w = { id: uid('w'), name: pw.name, o: nextWardO(), beds: [] }; state.wards.push(w); }
+    pw.beds.forEach(pb => {
+      let b = w.beds.find(x => x.bed === pb.bed);
+      if (!b){ b = makeBed(w, pb.bed); nb++; }
+      nt += addTaskObjs(b, pb.tasks, true).length;
+    });
+    sortBeds(w.beds);
+  });
+  if (p.round){ state.round = p.round; roundEl.value = p.round; }
   dlg.close(); save(); render();
-  toast('นำเข้าข้อมูลเรียบร้อย');
+  logAct(`📥 นำเข้าข้อความ: ${nb} เตียงใหม่ ${nt} งาน`);
+  toast(`นำเข้า ${nb} เตียงใหม่ · ${nt} งาน`);
 };
 
-window.addEventListener('resize', setHH);
+/* ---------- init ---------- */
 applyView();
-initSystem();
+updateHeaderLabels();
 render();
+updateSync();
+if (db){
+  db.ref('.info/connected').on('value', s => { online = !!s.val(); if (online) registerPresence(); updateSync(); });
+  connectRoom();
+}
+if (!currentMember){
+  setTimeout(() => openRoomDlg(), 500);
+}
 </script>
 </body>
 </html>
