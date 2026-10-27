@@ -130,7 +130,7 @@
     <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
   </datalist>
   <span class="stat" id="stat"></span>
-  <button id="roomBtn" class="hbtn" title="ตั้งค่าห้องซิงค์">☁️<span class="lbl" id="roomLbl"> ห้อง</span></button>
+  <button id="roomBtn" class="hbtn" title="ตั้งค่าห้องและสมาชิก">⚙️<span class="lbl" id="roomLbl"> ตั้งค่า</span></button>
   <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶<span class="lbl"> ย้อน</span></button>
   <button id="viewBtn" class="hbtn" title="สลับโหมดหน้าจอ"></button>
   <div id="quickbar" hidden>
@@ -171,7 +171,7 @@
       • พิมพ์งานแล้วกด Enter หรือปุ่ม + · ออกจากช่องแล้วบันทึกให้เอง<br>
       • ใส่หลายงานพร้อมกัน คั่นด้วย <b>,</b> เช่น <b>plan endo, CXR</b><br>
       • ขึ้นต้นด้วย <b>/</b> = บันทึกเป็น ✅ ทันที · หมายเหตุใส่ในวงเล็บ<br>
-      • ☁️ ปุ่มตั้งค่าห้อง: ใส่ชื่อห้องเดียวกันเพื่อให้ทุกคนซิงค์ข้อมูลเรียลไทม์
+      • ⚙️ ปุ่มตั้งค่า: ใช้ใส่ชื่อห้องเพื่อซิงค์ข้อมูลร่วมกัน และลงทะเบียนชื่อผู้บันทึกงาน
     </p>
   </section>
 </main>
@@ -193,14 +193,19 @@
   </div>
 </dialog>
 
+<!-- หน้าต่างตั้งค่าห้องและชื่อสมาชิก -->
 <dialog id="roomDlg">
-  <h3>☁️ ตั้งค่าห้องซิงค์ข้อมูลแบบเรียลไทม์</h3>
-  <p class="hint">ใส่รหัสห้องหรือชื่อห้องตรงกันเพื่อให้มือถือหลายเครื่องซิงค์ข้อมูลถึงกัน (หากไม่ใส่ จะบันทึกเฉพาะเครื่องนี้)</p>
-  <label style="font-size:14px;font-weight:700">ชื่อห้อง (Room Name):</label>
+  <h3>⚙️ ตั้งค่าห้องซิงค์ & สมาชิกผู้ใช้งาน</h3>
+  <p class="hint">กรอกชื่อของคุณเพื่อให้เพื่อนร่วมทีมรู้ว่าใครเป็นคนบันทึก/แก้ไขงาน และใส่ชื่อห้องให้ตรงกันเพื่อซิงค์ข้อมูลแบบเรียลไทม์</p>
+  
+  <label style="font-size:14px;font-weight:750;display:block;margin-top:10px">👤 ชื่อของคุณ / ผู้ใช้งาน (Member Name):</label>
+  <input id="memberNameInput" class="dlg-input" placeholder="เช่น พว.สมศรี, นพ.สมชาย" autocomplete="off">
+
+  <label style="font-size:14px;font-weight:750;display:block;margin-top:5px">☁️ ชื่อห้องซิงค์ข้อมูล (Room Name):</label>
   <input id="roomInput" class="dlg-input" placeholder="เช่น ward-gyne-room1" autocomplete="off">
-  <div class="btns">
-    <button id="saveRoom">เชื่อมต่อห้อง</button>
-    <button id="disconnectRoom" class="secondary danger">ยกเลิกเชื่อมต่อ</button>
+  
+  <div class="btns" style="margin-top:15px">
+    <button id="saveRoom">บันทึกการตั้งค่า</button>
     <button id="cancelRoom" class="secondary">ปิด</button>
   </div>
 </dialog>
@@ -208,12 +213,13 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// --- CONFIG FIREBASE (คุณสามารถเปลี่ยนค่าชุดนี้เป็น Firebase Project ของคุณเองได้) ---
+// --- CONFIG FIREBASE ---
 const firebaseConfig = {
-  databaseURL: "https://wardwork-default-rtdb.firebaseio.com/" // ตัวอย่าง Public/Demo หรือเปลี่ยนเป็น URL ของคุณ
+  databaseURL: "https://wardwork-default-rtdb.firebaseio.com/"
 };
 let db = null;
 let currentRoom = localStorage.getItem('wardwork-room') || '';
+let currentMember = localStorage.getItem('wardwork-member') || '';
 let isSyncing = false;
 
 if (firebaseConfig.databaseURL && !firebase.apps.length) {
@@ -259,26 +265,39 @@ function save(undo = true){
   renderChecklist();
 }
 
-// เปิดระบบ Real-time Listener หากเลือกห้องไว้
-function initRoomSync(){
-  if (!db || !currentRoom) {
-    $('roomLbl').textContent = currentRoom ? ` (${currentRoom})` : ' ห้อง';
-    return;
+// เปิดระบบ Real-time Listener และเช็คชื่อ Member
+function initSystem(){
+  updateHeaderLabels();
+  // ถ้ายังไม่มีชื่อสมาชิก ให้เด้งหน้าต่างตั้งค่าอัตโนมัติ
+  if (!currentMember) {
+    setTimeout(() => {
+      $('memberNameInput').value = currentMember;
+      $('roomInput').value = currentRoom;
+      $('roomDlg').showModal();
+    }, 500);
   }
-  $('roomLbl').textContent = ` (${currentRoom})`;
-  db.ref('rooms/' + currentRoom).on('value', snapshot => {
-    const val = snapshot.val();
-    if (val && Array.isArray(val.wards)) {
-      isSyncing = true;
-      state = { ...DEFAULT(), ...val, freq: val.freq || {} };
-      lastSnap = JSON.stringify(state);
-      roundEl.value = state.round; 
-      pendEl.checked = state.pendingOnly; 
-      dateEl.checked = state.showDate;
-      render();
-      isSyncing = false;
-    }
-  });
+  
+  if (db && currentRoom) {
+    db.ref('rooms/' + currentRoom).on('value', snapshot => {
+      const val = snapshot.val();
+      if (val && Array.isArray(val.wards)) {
+        isSyncing = true;
+        state = { ...DEFAULT(), ...val, freq: val.freq || {} };
+        lastSnap = JSON.stringify(state);
+        roundEl.value = state.round; 
+        pendEl.checked = state.pendingOnly; 
+        dateEl.checked = state.showDate;
+        render();
+        isSyncing = false;
+      }
+    });
+  }
+}
+
+function updateHeaderLabels(){
+  let labelTxt = ' ตั้งค่า';
+  if (currentMember) labelTxt = ` (${currentMember})`;
+  $('roomLbl').textContent = labelTxt;
 }
 
 function undo(){
@@ -481,6 +500,7 @@ function setActive(id){
 function headerText(){
   let h = state.round || '';
   if (state.showDate) h += ' ' + new Date().toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+  if (currentMember) h += ` (ผู้บันทึก: ${currentMember})`;
   return h.trim();
 }
 function wardText(w){
@@ -684,37 +704,46 @@ $('undoBtn').onclick = undo;
 $('viewBtn').onclick = cycleView;
 document.querySelectorAll('#mnav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
-// จัดการปุ่มตั้งค่าห้อง
+// จัดการปุ่มตั้งค่าห้องและสมาชิก
 const roomDlg = $('roomDlg');
-$('roomBtn').onclick = () => { $('roomInput').value = currentRoom; roomDlg.showModal(); };
+$('roomBtn').onclick = () => { 
+  $('memberNameInput').value = currentMember;
+  $('roomInput').value = currentRoom; 
+  roomDlg.showModal(); 
+};
 $('cancelRoom').onclick = () => roomDlg.close();
+
 $('saveRoom').onclick = () => {
+  const m = $('memberNameInput').value.trim();
   const r = $('roomInput').value.trim();
+  
+  if (!m) {
+    alert('กรุณากรอกชื่อผู้ใช้งานก่อนบันทึก');
+    $('memberNameInput').focus();
+    return;
+  }
+
+  currentMember = m;
   currentRoom = r;
+  localStorage.setItem('wardwork-member', m);
   localStorage.setItem('wardwork-room', r);
   roomDlg.close();
+  updateHeaderLabels();
+
   if (r && db) {
     db.ref('rooms/' + r).once('value', snapshot => {
       if (snapshot.val()) {
-        toast('เชื่อมต่อและดึงข้อมูลจากห้องสำเร็จ');
+        toast('เชื่อมต่อห้องและดึงข้อมูลสำเร็จ');
       } else {
         db.ref('rooms/' + r).set(state);
         toast('สร้างห้องใหม่และอัปโหลดข้อมูลเรียบร้อย');
       }
     });
-    initRoomSync();
+    setTimeout(() => { location.reload(); }, 600); // รีโหลดเพื่อให้ซิงค์ห้องใหม่สมบูรณ์
   } else {
-    toast('บันทึกการตั้งค่าห้องแล้ว');
-    $('roomLbl').textContent = r ? ` (${r})` : ' ห้อง';
+    toast('บันทึกข้อมูลเรียบร้อย');
+    updateOutput();
   }
-};
-$('disconnectRoom').onclick = () => {
-  currentRoom = '';
-  localStorage.removeItem('wardwork-room');
-  roomDlg.close();
-  $('roomLbl').textContent = ' ห้อง';
-  toast('ยกเลิกการเชื่อมต่อห้องเรียบร้อย');
-  location.reload();
 };
 
 document.addEventListener('keydown', e => {
@@ -762,14 +791,13 @@ const dlg = $('importDlg');
 $('importBtn').onclick = () => { $('importText').value = ''; dlg.showModal(); };
 $('cancelImport').onclick = () => dlg.close();
 $('doImport').onclick = () => {
-  // ฟังก์ชันนำเข้าคงเดิม
   dlg.close(); save(); render();
   toast('นำเข้าข้อมูลเรียบร้อย');
 };
 
 window.addEventListener('resize', setHH);
 applyView();
-if (currentRoom) initRoomSync();
+initSystem();
 render();
 </script>
 </body>
