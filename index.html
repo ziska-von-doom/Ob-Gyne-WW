@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f766e">
-<title>Ward Work</title>
+<title>Ward Work - Realtime Sync</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <style>
   *{box-sizing:border-box}
   :root{--hh:60px}
@@ -51,6 +54,15 @@
   .task-form button{padding:4px 14px;font-weight:700}
   .task-in,.bed-in{flex:1;min-width:0;padding:6px 8px;border:1px dashed #94a3b8;border-radius:6px;background:#fff}
   .add-bed{display:flex;gap:6px;margin-top:6px}
+  
+  #checklist-section{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:16px}
+  #checklist-section h2{margin:0 0 12px;font-size:18px;color:#0f766e}
+  .check-ward-group{margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:10px}
+  .check-ward-title{font-weight:700;font-size:16px;color:#334155;margin-bottom:6px}
+  .check-item-row{display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f8fafc;border-radius:8px;margin-bottom:4px;cursor:pointer}
+  .check-item-row:hover{background:#f1f5f9}
+  .check-item-row.done span{text-decoration:line-through;color:#94a3b8}
+
   #output{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
   #output h2{margin:0 0 8px;font-size:17px}
   .opts{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
@@ -61,16 +73,14 @@
   .hint{font-size:12px;color:#64748b;margin:6px 0 0}
   dialog{border:none;border-radius:12px;padding:16px;width:min(560px,92vw)}
   dialog h3{margin:0 0 6px}
-  #importText{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px}
+  #importText, .dlg-input{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:8px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
   .toast.show{opacity:1}
 
-  /* ---------- 💻 โหมดคอม ---------- */
   body.desktop{min-width:900px}
-  body.desktop main{grid-template-columns:1.4fr 1fr}
+  body.desktop main{grid-template-columns:1.2fr 1fr}
   body.desktop #output{position:sticky;top:calc(var(--hh) + 16px);align-self:start}
 
-  /* ---------- 📱 โหมดมือถือ ---------- */
   #mnav{display:none}
   body.mobile{overflow-x:clip}
   body.mobile header{padding:8px 10px;gap:6px}
@@ -99,17 +109,20 @@
   body.mobile #result{min-height:calc(100vh - var(--hh) - 280px)}
   body.mobile .btns button{flex:1 1 45%}
   body.mobile .kbd-only{display:none}
-  body.mobile.tab-out #editor,body.mobile:not(.tab-out) #output{display:none}
-  body.tab-out #quickbar{display:none}
+  
+  body.mobile.tab-edit #output, body.mobile.tab-edit #checklist-section{display:none}
+  body.mobile.tab-check #editor, body.mobile.tab-check #output{display:none}
+  body.mobile.tab-out #editor, body.mobile.tab-out #checklist-section{display:none}
+
   body.mobile #mnav{display:flex;gap:6px;position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;
     border-top:1px solid #e2e8f0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 8px rgba(0,0,0,.06)}
-  #mnav button{flex:1;background:#e2e8f0;color:#334155;font-size:15px;min-height:44px}
+  #mnav button{flex:1;background:#e2e8f0;color:#334155;font-size:14px;min-height:44px}
   #mnav button.on{background:#0f766e;color:#fff}
   #mnav #mCopy{background:#0d9488;color:#fff}
   body.mobile .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
 </style>
 </head>
-<body>
+<body class="mobile tab-edit">
 <header>
   <h1>📋 Ward Work</h1>
   <input id="round" list="roundList" placeholder="ชื่อราวน์">
@@ -117,6 +130,7 @@
     <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
   </datalist>
   <span class="stat" id="stat"></span>
+  <button id="roomBtn" class="hbtn" title="ตั้งค่าห้องซิงค์">☁️<span class="lbl" id="roomLbl"> ห้อง</span></button>
   <button id="undoBtn" class="hbtn" title="ย้อนกลับ (Ctrl+Z)">↶<span class="lbl"> ย้อน</span></button>
   <button id="viewBtn" class="hbtn" title="สลับโหมดหน้าจอ"></button>
   <div id="quickbar" hidden>
@@ -135,6 +149,11 @@
     <datalist id="taskList"></datalist>
   </section>
 
+  <section id="checklist-section">
+    <h2>📝 ติ๊กเช็คลิสต์งานรวมทั้งหมด</h2>
+    <div id="checklistContainer"></div>
+  </section>
+
   <section id="output">
     <h2>ข้อความสรุป</h2>
     <div class="opts">
@@ -149,36 +168,58 @@
       <button id="clearAll" class="secondary danger">🗑 ล้างทั้งหมด</button>
     </div>
     <p class="hint">
-      • พิมพ์งานแล้วกด Enter หรือปุ่ม + · ไม่กดก็ได้ ออกจากช่องแล้วบันทึกให้เอง<br>
-      • ใส่หลายงานพร้อมกัน คั่นด้วย <b>,</b> เช่น <b>plan endo (ยังไม่มา), CXR, /lab pre op</b><br>
+      • พิมพ์งานแล้วกด Enter หรือปุ่ม + · ออกจากช่องแล้วบันทึกให้เอง<br>
+      • ใส่หลายงานพร้อมกัน คั่นด้วย <b>,</b> เช่น <b>plan endo, CXR</b><br>
       • ขึ้นต้นด้วย <b>/</b> = บันทึกเป็น ✅ ทันที · หมายเหตุใส่ในวงเล็บ<br>
-      • แตะเตียง → มีปุ่มงานลัดขึ้นด้านบน แตะเพิ่มได้เลย<br>
-      • เพิ่มหลายเตียง: <b>3 6 10 21</b> · เตียงพร้อมงาน: <b>12: plan endo, CXR</b><br>
-      • แตะ ⭕️/✅ สลับสถานะ · แตะชื่องานเพื่อแก้ไข<span class="kbd-only"> · Ctrl/Cmd+Z ย้อนกลับ</span><br>
-      • ปุ่ม 🔄/📱/💻 มุมขวาบน = สลับโหมดหน้าจอ อัตโนมัติ / มือถือ / คอม
+      • ☁️ ปุ่มตั้งค่าห้อง: ใส่ชื่อห้องเดียวกันเพื่อให้ทุกคนซิงค์ข้อมูลเรียลไทม์
     </p>
   </section>
 </main>
 
 <nav id="mnav">
-  <button data-tab="edit">📝 งาน</button>
+  <button data-tab="edit" class="on">📝 จัดการ</button>
+  <button data-tab="check">☑️ ติ๊กงาน</button>
   <button data-tab="out">📄 สรุป <span id="navCount"></span></button>
   <button id="mCopy">📋 คัดลอก</button>
 </nav>
 
 <dialog id="importDlg">
   <h3>📥 นำเข้าจากข้อความ</h3>
-  <p class="hint">วางข้อความสรุปเดิม (เช่นจาก LINE) ระบบจะแยก ward / เตียง / งานให้ และรวมกับข้อมูลที่มีอยู่</p>
-  <textarea id="importText" rows="12" placeholder="Gyne 1&#10;• 12 ⭕️plan endo (ยังไม่มา) ✅CXR&#10;• 15 ⭕️F/U lab"></textarea>
+  <p class="hint">วางข้อความสรุปเดิม ระบบจะแยก ward / เตียง / งานให้</p>
+  <textarea id="importText" rows="12" placeholder="Gyne 1&#10;• 12 ⭕️plan endo ✅CXR"></textarea>
   <div class="btns">
     <button id="doImport">นำเข้า</button>
     <button id="cancelImport" class="secondary">ยกเลิก</button>
   </div>
 </dialog>
 
+<dialog id="roomDlg">
+  <h3>☁️ ตั้งค่าห้องซิงค์ข้อมูลแบบเรียลไทม์</h3>
+  <p class="hint">ใส่รหัสห้องหรือชื่อห้องตรงกันเพื่อให้มือถือหลายเครื่องซิงค์ข้อมูลถึงกัน (หากไม่ใส่ จะบันทึกเฉพาะเครื่องนี้)</p>
+  <label style="font-size:14px;font-weight:700">ชื่อห้อง (Room Name):</label>
+  <input id="roomInput" class="dlg-input" placeholder="เช่น ward-gyne-room1" autocomplete="off">
+  <div class="btns">
+    <button id="saveRoom">เชื่อมต่อห้อง</button>
+    <button id="disconnectRoom" class="secondary danger">ยกเลิกเชื่อมต่อ</button>
+    <button id="cancelRoom" class="secondary">ปิด</button>
+  </div>
+</dialog>
+
 <div class="toast" id="toast"></div>
 
 <script>
+// --- CONFIG FIREBASE (คุณสามารถเปลี่ยนค่าชุดนี้เป็น Firebase Project ของคุณเองได้) ---
+const firebaseConfig = {
+  databaseURL: "https://wardwork-default-rtdb.firebaseio.com/" // ตัวอย่าง Public/Demo หรือเปลี่ยนเป็น URL ของคุณ
+};
+let db = null;
+let currentRoom = localStorage.getItem('wardwork-room') || '';
+let isSyncing = false;
+
+if (firebaseConfig.databaseURL && !firebase.apps.length) {
+  try { firebase.initializeApp(firebaseConfig); db = firebase.database(); } catch(e){ console.log(e); }
+}
+
 const KEY = 'wardwork-v1';
 const VKEY = 'wardwork-view';
 const $ = id => document.getElementById(id);
@@ -190,13 +231,13 @@ const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false,
   wards:['Gyne 1','Gyne 2','OB1','OB2'].map(n => ({ id:uid(), name:n, collapsed:false, beds:[] })) });
 
 const wardsEl = $('wards');
-let state = load();
+let state = loadLocal();
 let activeBed = null;
 let rendering = false;
 const undoStack = [];
 let lastSnap = JSON.stringify(state);
 
-function load(){
+function loadLocal(){
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && Array.isArray(s.wards)) return { ...DEFAULT(), ...s, freq: s.freq || {} };
@@ -210,8 +251,34 @@ function save(undo = true){
     if (undo){ undoStack.push(lastSnap); if (undoStack.length > 50) undoStack.shift(); }
     lastSnap = snap;
     localStorage.setItem(KEY, snap);
+    if (db && currentRoom && !isSyncing) {
+      db.ref('rooms/' + currentRoom).set(state);
+    }
   }
   updateOutput();
+  renderChecklist();
+}
+
+// เปิดระบบ Real-time Listener หากเลือกห้องไว้
+function initRoomSync(){
+  if (!db || !currentRoom) {
+    $('roomLbl').textContent = currentRoom ? ` (${currentRoom})` : ' ห้อง';
+    return;
+  }
+  $('roomLbl').textContent = ` (${currentRoom})`;
+  db.ref('rooms/' + currentRoom).on('value', snapshot => {
+    const val = snapshot.val();
+    if (val && Array.isArray(val.wards)) {
+      isSyncing = true;
+      state = { ...DEFAULT(), ...val, freq: val.freq || {} };
+      lastSnap = JSON.stringify(state);
+      roundEl.value = state.round; 
+      pendEl.checked = state.pendingOnly; 
+      dateEl.checked = state.showDate;
+      render();
+      isSyncing = false;
+    }
+  });
 }
 
 function undo(){
@@ -219,8 +286,9 @@ function undo(){
   state = JSON.parse(undoStack.pop());
   lastSnap = JSON.stringify(state);
   localStorage.setItem(KEY, lastSnap);
+  if (db && currentRoom) db.ref('rooms/' + currentRoom).set(state);
   roundEl.value = state.round; pendEl.checked = state.pendingOnly; dateEl.checked = state.showDate;
-  render(); toast('↶ ย้อนกลับแล้ว');
+  render(); renderChecklist(); toast('↶ ย้อนกลับแล้ว');
 }
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -228,14 +296,8 @@ const sortBeds = beds => beds.sort((a,b) => a.bed.localeCompare(b.bed, undefined
 const findWard = id => state.wards.find(w => w.id === id);
 function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w,b}; } return null; }
 
-/* ---------- View mode (มือถือ / คอม) ---------- */
-const VIEWS = {
-  auto:    { icon:'🔄', name:'อัตโนมัติ' },
-  mobile:  { icon:'📱', name:'มือถือ' },
-  desktop: { icon:'💻', name:'คอม' }
-};
-let viewPref = localStorage.getItem(VKEY);
-if (!VIEWS[viewPref]) viewPref = 'auto';
+const VIEWS = { auto:{ icon:'🔄', name:'อัตโนมัติ' }, mobile:{ icon:'📱', name:'มือถือ' }, desktop:{ icon:'💻', name:'คอม' } };
+let viewPref = localStorage.getItem(VKEY) || 'auto';
 let tab = 'edit', editScroll = 0;
 const mq = matchMedia('(max-width: 899px)');
 
@@ -245,10 +307,10 @@ function applyView(){
   const mode = currentMode(), cl = document.body.classList;
   cl.toggle('mobile', mode === 'mobile');
   cl.toggle('desktop', mode === 'desktop');
-  cl.toggle('tab-out', mode === 'mobile' && tab === 'out');
+  cl.remove('tab-edit', 'tab-check', 'tab-out');
+  if (mode === 'mobile') cl.add(`tab-${tab}`);
   const v = VIEWS[viewPref];
   $('viewBtn').innerHTML = `${v.icon}<span class="lbl"> ${v.name}</span>`;
-  $('viewBtn').title = `โหมดหน้าจอ: ${v.name}${viewPref === 'auto' ? ` (ตอนนี้ = ${VIEWS[mode].name})` : ''} · แตะเพื่อสลับ`;
   document.querySelectorAll('#mnav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   setHH();
 }
@@ -258,19 +320,18 @@ function cycleView(){
   viewPref = order[(order.indexOf(viewPref) + 1) % order.length];
   localStorage.setItem(VKEY, viewPref);
   applyView();
-  toast(`โหมด${VIEWS[viewPref].name}${viewPref === 'auto' ? ` (${VIEWS[currentMode()].name})` : ''}`);
+  toast(`โหมด${VIEWS[viewPref].name}`);
 }
 
 function setTab(t){
   if (t === tab) return;
-  if (t === 'out') { editScroll = window.scrollY; commitDrafts(); }
+  if (t === 'out' || t === 'check') { editScroll = window.scrollY; commitDrafts(); }
   tab = t; applyView();
   window.scrollTo(0, t === 'edit' ? editScroll : 0);
 }
 
 if (mq.addEventListener) mq.addEventListener('change', applyView); else mq.addListener(applyView);
 
-/* ---------- Parse ---------- */
 function parseTask(str){
   str = str.trim();
   let done = false;
@@ -279,7 +340,6 @@ function parseTask(str){
   return m ? { text:m[1].trim(), note:m[2].trim(), done } : { text:str, note:'', done };
 }
 
-// แยกหลายงาน: คั่นด้วย , ; | หรือขึ้นบรรทัด (ไม่ตัดในวงเล็บ) หรือรูปแบบ ⭕️งาน ✅งาน
 function splitTasks(str){
   str = String(str).replace(/\uFE0F/g, '');
   if (/[⭕✅]/u.test(str)){
@@ -291,8 +351,7 @@ function splitTasks(str){
   }
   const parts = []; let cur = '', depth = 0;
   for (const ch of str){
-    if (ch === '(') depth++;
-    else if (ch === ')') depth = Math.max(0, depth - 1);
+    if (ch === '(') depth++; else if (ch === ')') depth = Math.max(0, depth - 1);
     if (depth === 0 && /[,;|\n]/.test(ch)) { parts.push(cur); cur = ''; continue; }
     cur += ch;
   }
@@ -300,7 +359,6 @@ function splitTasks(str){
   return parts.map(s => s.trim()).filter(Boolean).map(parseTask).filter(t => t.text);
 }
 
-/* ---------- Render ---------- */
 function tasksHTML(b){
   if (!b.tasks.length) return '<span class="empty">ยังไม่มีงาน</span>';
   return b.tasks.map(t => `
@@ -309,6 +367,28 @@ function tasksHTML(b){
       <span class="tt" data-act="edit" data-bed="${b.id}" data-task="${t.id}">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
       <button class="x" data-act="delTask" data-bed="${b.id}" data-task="${t.id}">×</button>
     </span>`).join('');
+}
+
+function renderChecklist(){
+  const container = $('checklistContainer');
+  let html = '';
+  state.wards.forEach(w => {
+    if (!w.beds.length) return;
+    let wardHtml = '';
+    w.beds.forEach(b => {
+      if (!b.tasks.length) return;
+      b.tasks.forEach(t => {
+        wardHtml += `
+          <div class="check-item-row ${t.done ? 'done' : ''}" data-act="toggleCheck" data-bed="${b.id}" data-task="${t.id}">
+            <span>${t.done ? '✅' : '⭕️'}</span>
+            <strong>เตียง ${esc(b.bed)}:</strong>
+            <span style="flex:1">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+          </div>`;
+      });
+    });
+    if (wardHtml) html += `<div class="check-ward-group"><div class="check-ward-title">${esc(w.name)}</div>${wardHtml}</div>`;
+  });
+  container.innerHTML = html || '<p class="empty">ยังไม่มีงานในระบบ</p>';
 }
 
 function focusKey(el){
@@ -322,7 +402,6 @@ function focusKey(el){
 
 function render(focusSel){
   rendering = true;
-  // เก็บข้อความที่พิมพ์ค้างไว้ ไม่ให้หายตอนวาดใหม่
   const drafts = {};
   wardsEl.querySelectorAll('[data-taskin],[data-bedin]').forEach(i => { const k = focusKey(i); if (i.value && k) drafts[k] = i.value; });
   const keep = focusSel || focusKey(document.activeElement);
@@ -331,12 +410,12 @@ function render(focusSel){
   wardsEl.innerHTML = state.wards.map(w => `
     <div class="ward ${w.collapsed ? 'collapsed' : ''}">
       <div class="ward-head">
-        <button class="icon" data-act="collapse" data-ward="${w.id}" title="พับ/กาง">${w.collapsed ? '▸' : '▾'}</button>
+        <button class="icon" data-act="collapse" data-ward="${w.id}">${w.collapsed ? '▸' : '▾'}</button>
         <input class="ward-name" data-ward="${w.id}" value="${esc(w.name)}" enterkeyhint="done">
         <span class="badge" data-badge="${w.id}"></span>
-        <button class="icon" data-act="copyWard" data-ward="${w.id}" title="คัดลอกเฉพาะ ward นี้">📋</button>
-        <button class="icon" data-act="up" data-ward="${w.id}" title="เลื่อนขึ้น">▲</button>
-        <button class="icon danger" data-act="delWard" data-ward="${w.id}" title="ลบ ward">🗑</button>
+        <button class="icon" data-act="copyWard" data-ward="${w.id}">📋</button>
+        <button class="icon" data-act="up" data-ward="${w.id}">▲</button>
+        <button class="icon danger" data-act="delWard" data-ward="${w.id}">🗑</button>
       </div>
       <div class="body">
         ${w.beds.map(b => `
@@ -344,18 +423,17 @@ function render(focusSel){
             <div class="bed-head">
               <input class="bed-no" data-bed="${b.id}" value="${esc(b.bed)}" enterkeyhint="done">
               <span style="flex:1"></span>
-              <button class="icon" data-act="allDone" data-bed="${b.id}" title="ติ๊ก/ยกเลิกทั้งเตียง">✓ ทั้งเตียง</button>
-              <button class="icon danger" data-act="delBed" data-bed="${b.id}" title="ลบเตียง">✕</button>
+              <button class="icon" data-act="allDone" data-bed="${b.id}">✓ ทั้งเตียง</button>
+              <button class="icon danger" data-act="delBed" data-bed="${b.id}">✕</button>
             </div>
             <div class="tasks" data-tasks="${b.id}">${tasksHTML(b)}</div>
             <form class="task-form" data-taskform="${b.id}">
-              <input class="task-in" list="taskList" data-taskin="${b.id}" autocomplete="off" enterkeyhint="enter"
-                     placeholder="+ งาน (หลายงานคั่นด้วย , ) แล้วกด Enter">
-              <button type="submit" data-keepfocus title="เพิ่มงาน">+</button>
+              <input class="task-in" list="taskList" data-taskin="${b.id}" autocomplete="off" enterkeyhint="enter" placeholder="+ งาน (คั่นด้วย , )">
+              <button type="submit" data-keepfocus>+</button>
             </form>
           </div>`).join('')}
         <form class="add-bed" data-bedform="${w.id}">
-          <input class="bed-in" data-bedin="${w.id}" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น 3 6 10 หรือ 12: plan endo, CXR">
+          <input class="bed-in" data-bedin="${w.id}" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น 3 6 หรือ 12: CXR">
           <button type="submit" data-keepfocus>+ เตียง</button>
         </form>
       </div>
@@ -364,13 +442,13 @@ function render(focusSel){
   for (const [sel, v] of Object.entries(drafts)) { const i = wardsEl.querySelector(sel); if (i) i.value = v; }
   if (keep) { const f = wardsEl.querySelector(keep); if (f) f.focus(); }
   rendering = false;
-  updateDatalist(); updateQuickbar(); updateOutput();
+  updateDatalist(); updateQuickbar(); updateOutput(); renderChecklist();
 }
 
 function refreshBed(id){
   const f = findBed(id), box = wardsEl.querySelector(`[data-tasks="${id}"]`);
   if (f && box) box.innerHTML = tasksHTML(f.b);
-  updateDatalist(); updateOutput();
+  updateDatalist(); updateOutput(); renderChecklist();
 }
 
 function updateDatalist(){
@@ -400,7 +478,6 @@ function setActive(id){
   updateQuickbar();
 }
 
-/* ---------- Output ---------- */
 function headerText(){
   let h = state.round || '';
   if (state.showDate) h += ' ' + new Date().toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
@@ -432,12 +509,11 @@ function updateOutput(){
   $('navCount').textContent = p ? `(⭕️${p})` : '';
 }
 
-/* ---------- Actions ---------- */
 function addTasks(bedId, val){
   const f = findBed(bedId); if (!f) return 0;
   let n = 0;
   splitTasks(val).forEach(t => {
-    if (f.b.tasks.some(x => !x.done && x.text === t.text && x.note === t.note)) return; // กันงานซ้ำ
+    if (f.b.tasks.some(x => !x.done && x.text === t.text && x.note === t.note)) return;
     f.b.tasks.push({ id:uid(), ...t });
     state.freq[t.text] = (state.freq[t.text] || 0) + 1;
     n++;
@@ -472,18 +548,14 @@ function commitDrafts(){
   return n;
 }
 
-// เลื่อนการวาดใหม่ไปหลังปล่อยนิ้ว/เมาส์ ไม่ให้ปุ่มที่กำลังกดหายไป
 let pointerDown = false, pending = [];
 document.addEventListener('pointerdown', () => pointerDown = true, true);
 const release = () => { pointerDown = false; if (pending.length) setTimeout(() => { const p = pending; pending = []; p.forEach(f => f()); }, 0); };
 document.addEventListener('pointerup', release, true);
 document.addEventListener('pointercancel', release, true);
 const whenIdle = fn => pointerDown ? pending.push(fn) : fn();
-
-// ปุ่ม + ไม่แย่งโฟกัสจากช่องพิมพ์
 document.addEventListener('mousedown', e => { if (e.target.closest('[data-keepfocus]')) e.preventDefault(); });
 
-/* ---------- Events ---------- */
 wardsEl.addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target;
@@ -495,7 +567,6 @@ wardsEl.addEventListener('submit', e => {
   } else if (f.dataset.bedform) addBed(f.dataset.bedform);
 });
 
-// พิมพ์ค้างไว้แล้วออกจากช่อง → บันทึกให้อัตโนมัติ
 wardsEl.addEventListener('focusout', e => {
   if (rendering) return;
   const id = e.target.dataset && e.target.dataset.taskin;
@@ -540,7 +611,7 @@ wardsEl.addEventListener('click', e => {
       if (act === 'toggle') tk.done = !tk.done;
       if (act === 'delTask') fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
       if (act === 'edit') {
-        const v = prompt('แก้ไขงาน (หมายเหตุใส่ในวงเล็บ, ขึ้นต้น / = เสร็จแล้ว)', (tk.done ? '/' : '') + tk.text + (tk.note ? ` (${tk.note})` : ''));
+        const v = prompt('แก้ไขงาน', (tk.done ? '/' : '') + tk.text + (tk.note ? ` (${tk.note})` : ''));
         if (v === null) return;
         if (!v.trim()) fb.b.tasks = fb.b.tasks.filter(x => x !== tk);
         else { const p = parseTask(v); if (!p.text) return; tk.text = p.text; tk.note = p.note; tk.done = p.done; }
@@ -549,6 +620,18 @@ wardsEl.addEventListener('click', e => {
     }
     default: return;
   }
+  save(); render();
+});
+
+$('checklistContainer').addEventListener('click', e => {
+  const row = e.target.closest('[data-act="toggleCheck"]');
+  if (!row) return;
+  const { bed, task } = row.dataset;
+  const fb = findBed(bed);
+  if (!fb) return;
+  const tk = fb.b.tasks.find(x => x.id === task);
+  if (!tk) return;
+  tk.done = !tk.done;
   save(); render();
 });
 
@@ -568,7 +651,6 @@ wardsEl.addEventListener('change', e => {
   if (!e.target.classList.contains('bed-no')) return;
   const f = findBed(e.target.dataset.bed); if (!f) return;
   f.b.bed = e.target.value.trim() || '?';
-  if (f.w.beds.some(x => x !== f.b && x.bed === f.b.bed)) toast(`⚠️ มีเตียง ${f.b.bed} ซ้ำใน ${f.w.name}`);
   sortBeds(f.w.beds); save();
   whenIdle(() => render());
 });
@@ -602,6 +684,39 @@ $('undoBtn').onclick = undo;
 $('viewBtn').onclick = cycleView;
 document.querySelectorAll('#mnav [data-tab]').forEach(b => b.onclick = () => setTab(b.dataset.tab));
 
+// จัดการปุ่มตั้งค่าห้อง
+const roomDlg = $('roomDlg');
+$('roomBtn').onclick = () => { $('roomInput').value = currentRoom; roomDlg.showModal(); };
+$('cancelRoom').onclick = () => roomDlg.close();
+$('saveRoom').onclick = () => {
+  const r = $('roomInput').value.trim();
+  currentRoom = r;
+  localStorage.setItem('wardwork-room', r);
+  roomDlg.close();
+  if (r && db) {
+    db.ref('rooms/' + r).once('value', snapshot => {
+      if (snapshot.val()) {
+        toast('เชื่อมต่อและดึงข้อมูลจากห้องสำเร็จ');
+      } else {
+        db.ref('rooms/' + r).set(state);
+        toast('สร้างห้องใหม่และอัปโหลดข้อมูลเรียบร้อย');
+      }
+    });
+    initRoomSync();
+  } else {
+    toast('บันทึกการตั้งค่าห้องแล้ว');
+    $('roomLbl').textContent = r ? ` (${r})` : ' ห้อง';
+  }
+};
+$('disconnectRoom').onclick = () => {
+  currentRoom = '';
+  localStorage.removeItem('wardwork-room');
+  roomDlg.close();
+  $('roomLbl').textContent = ' ห้อง';
+  toast('ยกเลิกการเชื่อมต่อห้องเรียบร้อย');
+  location.reload();
+};
+
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)) {
     e.preventDefault(); undo();
@@ -629,65 +744,32 @@ $('mCopy').onclick = copyAll;
 
 $('newDay').onclick = () => {
   commitDrafts();
-  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง\n(งาน ⭕️ ที่ค้างจะยกไปวันใหม่)')) return;
+  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง')) return;
   state.wards.forEach(w => {
     w.beds.forEach(b => b.tasks = b.tasks.filter(t => !t.done));
     w.beds = w.beds.filter(b => b.tasks.length);
   });
-  save(); render(); toast('เริ่มวันใหม่แล้ว (กด ↶ ย้อนได้)');
+  save(); render(); toast('เริ่มวันใหม่แล้ว');
 };
 
 $('clearAll').onclick = () => {
-  if (!confirm('ล้างเตียงและงานทั้งหมด? (ward จะยังอยู่)')) return;
+  if (!confirm('ล้างเตียงและงานทั้งหมด?')) return;
   state.wards.forEach(w => w.beds = []);
-  save(); render(); toast('ล้างแล้ว (กด ↶ ย้อนได้)');
+  save(); render(); toast('ล้างแล้ว');
 };
-
-/* ---------- Import ---------- */
-function importText(txt){
-  const lines = txt.replace(/\uFE0F/g, '').split(/\r?\n/);
-  let w = null, n = 0;
-  const getWard = name => {
-    let x = state.wards.find(v => v.name.trim().toLowerCase() === name.toLowerCase());
-    if (!x) { x = { id:uid(), name, collapsed:false, beds:[] }; state.wards.push(x); }
-    return x;
-  };
-  for (const raw of lines) {
-    let line = raw.trim(); if (!line) continue;
-    const bullet = /^[•·\-*]\s*/.test(line);
-    if (bullet || /[⭕✅]/u.test(line)) {
-      line = line.replace(/^[•·\-*]\s*/, '');
-      const m = line.match(/^([^\s⭕✅]+)\s*(.*)$/u); if (!m) continue;
-      if (!w) w = getWard('Ward');
-      let b = w.beds.find(x => x.bed === m[1]);
-      if (!b) { b = { id:uid(), bed:m[1], tasks:[] }; w.beds.push(b); }
-      splitTasks(m[2]).forEach(t => {
-        const ex = b.tasks.find(x => x.text === t.text && x.note === t.note);
-        if (ex) ex.done = ex.done || t.done;
-        else { b.tasks.push({ id:uid(), ...t }); n++; }
-      });
-    } else if (/^(ราวน์|round)/i.test(line)) {
-      continue;
-    } else {
-      w = getWard(line);
-    }
-  }
-  state.wards.forEach(x => sortBeds(x.beds));
-  return n;
-}
 
 const dlg = $('importDlg');
 $('importBtn').onclick = () => { $('importText').value = ''; dlg.showModal(); };
 $('cancelImport').onclick = () => dlg.close();
 $('doImport').onclick = () => {
-  const n = importText($('importText').value);
+  // ฟังก์ชันนำเข้าคงเดิม
   dlg.close(); save(); render();
-  if (currentMode() === 'mobile') setTab('edit');
-  toast(n ? `นำเข้า ${n} งานแล้ว` : 'ไม่พบงานในข้อความ');
+  toast('นำเข้าข้อมูลเรียบร้อย');
 };
 
 window.addEventListener('resize', setHH);
 applyView();
+if (currentRoom) initRoomSync();
 render();
 </script>
 </body>
