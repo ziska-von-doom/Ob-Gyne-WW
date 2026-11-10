@@ -14,26 +14,25 @@
   }
   ตั้งที่ Firebase Console > Realtime Database > Rules แล้วกด Publish
 -->
-<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 <style>
   *{box-sizing:border-box}
   :root{--hh:60px}
   body{margin:0;font-family:system-ui,-apple-system,"Sarabun",sans-serif;background:#f1f5f9;color:#1e293b;-webkit-tap-highlight-color:transparent}
-  header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+  header{background:#0f766e;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5;transition:background .25s}
   header h1{font-size:20px;margin:0;flex:1;white-space:nowrap}
   header input{padding:6px 10px;border-radius:8px;border:none;font-size:15px;width:120px}
   .stat{font-size:13px;opacity:.9}
   .hbtn{background:rgba(255,255,255,.18);padding:4px 10px;white-space:nowrap}
   #quickbar{flex-basis:100%;display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:2px}
   #quickbar[hidden]{display:none}
-  #qbLabel{font-size:13px;white-space:nowrap}
+  #qbLabel{font-size:13px;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
   #chips{display:flex;gap:6px}
   .chip{background:#ccfbf1;color:#134e4a;border-radius:16px;padding:3px 10px;font-size:13px;white-space:nowrap}
   main{display:grid;grid-template-columns:1fr;gap:16px;padding:16px;max-width:1200px;margin:auto}
   main > section{min-width:0}
-  input,button,textarea{font:inherit}
+  input,button,textarea,select{font:inherit}
   button{cursor:pointer;border:none;border-radius:8px;padding:6px 12px;background:#0f766e;color:#fff}
   button:hover{filter:brightness(1.1)}
   .row{display:flex;gap:8px;margin-bottom:12px}
@@ -75,8 +74,8 @@
   .check-item-row.done .t-text{text-decoration:line-through;color:#64748b}
   .t-text{flex:1;min-width:0;word-break:break-word}
   .who{font-size:11px;color:#64748b;white-space:nowrap;text-align:right}
-  #logBox{margin-top:10px;font-size:13px}
-  #logBox summary{cursor:pointer;color:#0f766e;font-weight:600}
+  .logbox{margin-top:10px;font-size:13px}
+  .logbox summary{cursor:pointer;color:#0f766e;font-weight:600}
   .loglist{max-height:220px;overflow:auto;margin-top:6px}
   .loglist div{padding:3px 0;border-bottom:1px dashed #e2e8f0}
   .loglist time{color:#94a3b8;margin-right:6px}
@@ -112,7 +111,7 @@
   body.mobile .hbtn .lbl{display:none}
   body.mobile .hbtn{padding:6px 10px;font-size:15px}
   body.mobile main{padding:10px 10px calc(84px + env(safe-area-inset-bottom));gap:10px}
-  body.mobile input,body.mobile textarea{font-size:16px}
+  body.mobile input,body.mobile textarea,body.mobile select{font-size:16px}
   body.mobile button{min-height:40px}
   body.mobile .icon{padding:6px 10px}
   body.mobile .ward{padding:10px}
@@ -131,7 +130,7 @@
   body.mobile #result{min-height:calc(100vh - var(--hh) - 300px)}
   body.mobile .btns button{flex:1 1 45%}
 
-  body.mobile.tab-edit #output, body.mobile.tab-edit #checklist-section{display:none}
+  body.mobile.tab-edit #output, body.mobile.tab-edit #checklist-section, body.mobile.tab-edit #tracker{display:none}
   body.mobile.tab-check #editor, body.mobile.tab-check #output{display:none}
   body.mobile.tab-out #editor, body.mobile.tab-out #checklist-section{display:none}
 
@@ -141,11 +140,104 @@
   #mnav button.on{background:#0f766e;color:#fff}
   #mnav #mCopy{background:#0d9488;color:#fff}
   body.mobile .toast{bottom:calc(80px + env(safe-area-inset-bottom))}
+
+  /* ===== Mode switch ===== */
+  .modesw{display:flex;background:rgba(0,0,0,.2);border-radius:10px;padding:3px;gap:2px}
+  .modesw button{background:transparent;color:#fff;padding:4px 10px;font-size:14px;border-radius:8px;white-space:nowrap}
+  .modesw button.on{background:#fff;color:#0f766e;font-weight:700}
+  body.mobile .modesw button{min-height:32px}
+  body.lr header{background:#be185d}
+  body.lr .modesw button.on{color:#be185d}
+  body.lr #mnav button.on{background:#be185d}
+  body.lr #checklist-section, body.lr #output, body.lr #wardForm, body.lr #round{display:none}
+  body.lr #mnav [data-tab="out"], body.lr #mnav #mCopy{display:none}
+  body.ward #tracker{display:none}
+  body.desktop.lr main{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);grid-template-areas:"ed tr"}
+  body.desktop #tracker{grid-area:tr;position:sticky;top:calc(var(--hh) + 16px);max-height:calc(100vh - var(--hh) - 32px);overflow:auto}
+
+  /* ===== LR editor ===== */
+  body .lr-addbox{padding:12px}
+  body .bed.lrbed{background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;border-left:4px solid #ec4899;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  body .bed.lrbed.active{border-left-color:#f59e0b;box-shadow:0 0 0 2px #fde68a,0 1px 3px rgba(0,0,0,.08)}
+  body .bed.lrbed .bed-no{flex:1;width:auto;min-width:0;font-size:15px;padding:7px 10px}
+  .lr-ic{font-size:18px}
+  .lr-sec{margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0}
+  .lr-lbl{font-size:13px;font-weight:700;color:#475569;margin-bottom:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .probs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+  .prob{display:inline-flex;align-items:center;background:#fce7f3;color:#9d174d;border-radius:14px;padding:2px 2px 2px 10px;font-size:14px}
+  .prob .pt{cursor:pointer}
+  .prob .x{background:none;color:#be185d;padding:2px 8px}
+  .bed.lrbed .task-form button{background:#be185d}
+  .pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+  .pv-f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#64748b;min-width:0}
+  .pv-f.time{grid-column:span 2}
+  .pv-f.wide{grid-column:1/-1}
+  .pv-f select,.pv-f input{padding:7px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font-size:14px;color:#1e293b;min-width:0;width:100%}
+  .pv-time{display:flex;gap:6px}
+  .pv-time input{flex:1}
+  .pv-time button{white-space:nowrap}
+  .bishop{border-radius:10px;padding:2px 10px;font-size:12px;font-weight:700;background:#f1f5f9;color:#475569}
+  .bishop.good,.pv-score.good{background:#dcfce7;color:#166534}
+  .bishop.mid,.pv-score.mid{background:#fef3c7;color:#92400e}
+  .bishop.bad,.pv-score.bad{background:#fee2e2;color:#991b1b}
+  .mini{padding:2px 8px;font-size:12px}
+  body.mobile .mini{min-height:30px}
+
+  /* ===== LR tracker ===== */
+  .tr-head{background:linear-gradient(135deg,#be185d,#7c3aed);color:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(190,24,93,.25)}
+  .tr-title{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+  .tr-title h2{margin:0;font-size:18px;flex:1}
+  .tr-clock{font-size:12px;opacity:.85}
+  .tr-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .tr-sum div{background:rgba(255,255,255,.16);border-radius:12px;padding:8px 4px;text-align:center}
+  .tr-sum div.alert{background:#fbbf24;color:#78350f}
+  .tr-sum b{display:block;font-size:22px;line-height:1.1}
+  .tr-sum small{font-size:11px;opacity:.95}
+  .tr-tools{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px;font-size:14px;flex-wrap:wrap}
+  .tr-tools button{background:rgba(255,255,255,.22);color:#fff}
+  .tr-tools input{width:18px;height:18px;vertical-align:-3px}
+  .tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+  .tcard{background:#fff;border-radius:16px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 6px 16px rgba(0,0,0,.04);border-top:5px solid #f59e0b;display:flex;flex-direction:column;gap:10px}
+  .tcard.clear{border-top-color:#10b981}
+  .tcard.none{border-top-color:#cbd5e1}
+  .tc-top{display:flex;gap:10px;align-items:center}
+  .tc-bed{flex:1;min-width:0;font-weight:800;font-size:16px;word-break:break-word;color:#0f172a}
+  .tc-edit{background:#f1f5f9;color:#475569;padding:4px 8px}
+  .ring{--p:0;width:48px;height:48px;border-radius:50%;flex:none;display:grid;place-items:center;
+    background:conic-gradient(#10b981 calc(var(--p) * 1%), #e2e8f0 0)}
+  .ring span{width:38px;height:38px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;color:#334155}
+  .tc-probs{display:flex;flex-wrap:wrap;gap:4px}
+  .tag{background:#fce7f3;color:#9d174d;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:600}
+  .tc-pv{display:flex;gap:10px;align-items:center;background:#f8fafc;border-radius:12px;padding:8px}
+  .tc-pv.nopv{color:#94a3b8;font-size:13px;justify-content:center;padding:12px}
+  .pv-score{width:56px;height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#e2e8f0;color:#475569;flex:none}
+  .pv-score b{font-size:22px;line-height:1}
+  .pv-score small{font-size:10px;margin-top:2px}
+  .pv-info{flex:1;min-width:0;font-size:13px}
+  .pv-parts{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+  .pv-parts span{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:1px 6px;font-size:12px}
+  .pv-lbl{font-size:12px;font-weight:700}
+  .pv-when{font-size:12px;color:#64748b}
+  .pv-when.stale{color:#b45309;font-weight:700}
+  .pv-note{font-size:12px;color:#475569;margin-top:2px}
+  .tc-tasks{display:flex;flex-direction:column;gap:5px}
+  .tc-task{display:flex;gap:8px;align-items:center;padding:9px 10px;border-radius:10px;background:#fff7ed;cursor:pointer;font-size:14px;transition:background .15s}
+  .tc-task:hover{filter:brightness(.98)}
+  .tc-task.done{background:#ecfdf5}
+  .tc-task.done .t-text{text-decoration:line-through;color:#64748b}
+  .tr-empty{grid-column:1/-1;background:#fff;border-radius:16px;padding:30px;text-align:center;color:#64748b}
+  .tr-log{background:#fff;border-radius:12px;padding:10px 12px;margin-top:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .tr-log summary{color:#be185d}
+  body.mobile .tr-sum b{font-size:19px}
 </style>
 </head>
-<body class="mobile tab-edit">
+<body class="mobile tab-edit ward">
 <header>
-  <h1>📋 Ward Work</h1>
+  <h1 id="appTitle">📋 Ward Work</h1>
+  <div class="modesw" id="modeSw">
+    <button data-mode="ward" class="on">🏥 Ward</button>
+    <button data-mode="lr">🤰 LR</button>
+  </div>
   <input id="round" list="roundList" placeholder="ชื่อราวน์">
   <datalist id="roundList">
     <option>ราวน์เช้า</option><option>ราวน์บ่าย</option><option>ราวน์เย็น</option><option>ราวน์ดึก</option>
@@ -170,6 +262,7 @@
     </form>
     <div id="wards"></div>
     <datalist id="taskList"></datalist>
+    <datalist id="probList"></datalist>
   </section>
 
   <section id="checklist-section">
@@ -177,9 +270,25 @@
     <div class="opts"><label><input type="checkbox" id="ckPending"> แสดงเฉพาะงานค้าง</label></div>
     <p class="hint" style="margin-top:-2px;margin-bottom:10px">แตะที่แถวงานเพื่อเปลี่ยนสถานะ เพื่อนในห้องจะเห็นทันที พร้อมชื่อคนติ๊ก</p>
     <div id="checklistContainer"></div>
-    <details id="logBox">
+    <details class="logbox">
       <summary>🕘 ความเคลื่อนไหวล่าสุดในห้อง</summary>
-      <div id="logList" class="loglist"><span class="empty">ยังไม่มีข้อมูล (ต้องเชื่อมต่อห้องก่อน)</span></div>
+      <div class="loglist" data-loglist><span class="empty">ยังไม่มีข้อมูล (ต้องเชื่อมต่อห้องก่อน)</span></div>
+    </details>
+  </section>
+
+  <section id="tracker">
+    <div class="tr-head">
+      <div class="tr-title"><h2>🤰 ติดตามงานห้องคลอด</h2><span class="tr-clock" id="trClock"></span></div>
+      <div class="tr-sum" id="trSum"></div>
+      <div class="tr-tools">
+        <label><input type="checkbox" id="trPending"> แสดงเฉพาะงานค้าง</label>
+        <button id="trClean" type="button">🧹 ลบงานที่เสร็จแล้ว</button>
+      </div>
+    </div>
+    <div class="tr-grid" id="trGrid"></div>
+    <details class="logbox tr-log">
+      <summary>🕘 ความเคลื่อนไหวล่าสุดในห้อง</summary>
+      <div class="loglist" data-loglist><span class="empty">ยังไม่มีข้อมูล (ต้องเชื่อมต่อห้องก่อน)</span></div>
     </details>
   </section>
 
@@ -208,7 +317,7 @@
 
 <nav id="mnav">
   <button data-tab="edit" class="on">📝 จัดการ</button>
-  <button data-tab="check">☑️ ติ๊กงาน</button>
+  <button data-tab="check"><span id="navCheckLbl">☑️ ติ๊กงาน</span> <span id="navCheckCount"></span></button>
   <button data-tab="out">📄 สรุป <span id="navCount"></span></button>
   <button id="mCopy">📋 คัดลอก</button>
 </nav>
@@ -226,10 +335,8 @@
 <dialog id="roomDlg">
   <h3>⚙️ ตั้งค่าห้องซิงค์ & สมาชิกผู้ใช้งาน</h3>
   <p class="hint">กรอกชื่อของคุณเพื่อให้เพื่อนร่วมทีมรู้ว่าใครเพิ่ม/ติ๊กงาน และใส่รหัสห้องให้ตรงกันเพื่อซิงค์ข้อมูล</p>
-
   <label style="font-size:14px;font-weight:700;display:block;margin-top:10px">👤 ชื่อของคุณ (Member Name):</label>
   <input id="memberNameInput" class="dlg-input" placeholder="เช่น พว.สมศรี, นพ.สมชาย" autocomplete="off">
-
   <label style="font-size:14px;font-weight:700;display:block;margin-top:5px">☁️ รหัสห้องซิงค์ (Room):</label>
   <input id="roomInput" class="dlg-input" placeholder="เช่น ward-a1b2c3d4 (เว้นว่าง = ใช้เฉพาะเครื่องนี้)" autocomplete="off" style="margin-bottom:6px">
   <div class="btns" style="margin-top:0;margin-bottom:6px">
@@ -238,7 +345,6 @@
     <button id="testConn" class="secondary" type="button">🩺 ทดสอบการเชื่อมต่อ</button>
   </div>
   <div class="warn">⚠️ ใครรู้รหัสห้องจะเห็นข้อมูลได้ — ใช้รหัสที่เดายาก และ<b>ห้ามใส่ชื่อ-นามสกุลหรือ HN ผู้ป่วย</b> ให้ใช้เลขเตียงแทน</div>
-
   <div class="btns" style="margin-top:10px">
     <button id="saveRoom">บันทึกการตั้งค่า</button>
     <button id="cancelRoom" class="secondary">ปิด</button>
@@ -250,11 +356,11 @@
 <script>
 'use strict';
 /* =====================================================================
-   Ward Work — realtime sync
-   - ข้อมูลที่ซิงค์ (rooms/<room>/v2/data) เก็บแบบ "ทีละรายการ" (ward/เตียง/งาน แต่ละอันมี path ของตัวเอง)
-     ทำให้คนละคนแก้คนละงานพร้อมกันได้ ไม่เขียนทับกัน
-   - ตั้งค่าหน้าจอ (เฉพาะงานค้าง, ใส่วันที่, ยุบ ward) เป็นของแต่ละคน ไม่ซิงค์
-   - ออฟไลน์แล้วกลับมา: รวมข้อมูลแบบ 3-way (base / ในเครื่อง / บนเซิร์ฟเวอร์)
+   Ward Work — realtime sync (Ward mode + LR mode)
+   - ข้อมูลที่ซิงค์ (rooms/<room>/v2/data) เก็บแบบทีละรายการ
+     wards/...  = โหมด Ward
+     lr/beds/... = โหมด LR (เตียง, problem list, PV/Bishop, งาน)
+   - โหมด (Ward/LR) และการตั้งค่าหน้าจอ เป็นของแต่ละเครื่อง ไม่ซิงค์
    ===================================================================== */
 
 /* ---------- helpers ---------- */
@@ -264,7 +370,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const uid = p => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
 let seq = 0;
 const taskO = () => Date.now() * 100 + (seq++ % 100);
-const encKey = s => encodeURIComponent(String(s)).replace(/\./g, '%2E');   // Firebase key ห้ามมี . # $ [ ] /
+const encKey = s => encodeURIComponent(String(s)).replace(/\./g, '%2E');
 const decKey = s => { try { return decodeURIComponent(s); } catch { return s; } };
 const sanitizeRoom = s => String(s || '').trim().replace(/[.#$\[\]\/\s]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 const bedId = (wid, name) => 'b_' + wid + '_' + encKey(name);
@@ -280,13 +386,89 @@ function fmtT(ms){
 function whoText(t){
   return t.done ? `✓ ${t.doneBy || ''} ${fmtT(t.at)}`.trim() : `+ ${t.by || ''} ${fmtT(t.at)}`.trim();
 }
+function ago(ms){
+  const m = Math.max(0, Math.floor(ms / 60000));
+  if (m < 1) return 'เมื่อสักครู่';
+  if (m < 60) return `${m} นาทีที่แล้ว`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return `${h} ชม.${r ? ` ${r} นาที` : ''}ที่แล้ว`;
+}
+const pad2 = n => String(n).padStart(2, '0');
+function msToTime(ms){ if (!ms) return ''; const d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function timeToMs(v){
+  const [h, m] = String(v).split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return '';
+  const d = new Date(); d.setHours(h, m, 0, 0);
+  if (d.getTime() > Date.now() + 5 * 60000) d.setDate(d.getDate() - 1);   // เวลาในอนาคต = เมื่อวาน
+  return d.getTime();
+}
 
-/* ---------- sync data model (pure functions) ---------- */
-// state -> แผนที่ path→ค่า (เฉพาะส่วนที่ซิงค์)
+/* ---------- LR: PV / Bishop score ---------- */
+const PVK = ['t','dil','eff','sta','cons','pos','note','by'];
+const PV0 = () => ({ t:'', dil:'', eff:'', sta:'', cons:'', pos:'', note:'', by:'' });
+const PV_OPT = {
+  dil:  { label:'Dilatation',  opts: Array.from({length:11}, (_, i) => [String(i), i ? i + ' cm' : '0 (closed)']) },
+  eff:  { label:'Effacement',  opts: Array.from({length:11}, (_, i) => [String(i * 10), i * 10 + '%']) },
+  sta:  { label:'Station',     opts: ['-3','-2','-1','0','+1','+2','+3'].map(v => [v, v]) },
+  cons: { label:'Consistency', opts: [['firm','Firm'],['medium','Medium'],['soft','Soft']] },
+  pos:  { label:'Position',    opts: [['post','Posterior'],['mid','Mid'],['ant','Anterior']] }
+};
+const pvLabel = (k, v) => { const o = PV_OPT[k] && PV_OPT[k].opts.find(x => x[0] === v); return o ? o[1] : v; };
+const hasPV = (pv, k) => !!pv && pv[k] !== '' && pv[k] != null;
+function bishop(pv){
+  let s = 0, n = 0;
+  if (hasPV(pv, 'dil')){ const v = +pv.dil; s += v <= 0 ? 0 : v <= 2 ? 1 : v <= 4 ? 2 : 3; n++; }
+  if (hasPV(pv, 'eff')){ const v = +pv.eff; s += v <= 30 ? 0 : v <= 50 ? 1 : v <= 70 ? 2 : 3; n++; }
+  if (hasPV(pv, 'sta')){ const v = parseInt(pv.sta, 10); s += v <= -3 ? 0 : v === -2 ? 1 : v <= 0 ? 2 : 3; n++; }
+  if (hasPV(pv, 'cons')){ s += ({firm:0, medium:1, soft:2})[pv.cons] || 0; n++; }
+  if (hasPV(pv, 'pos')){ s += ({post:0, mid:1, ant:2})[pv.pos] || 0; n++; }
+  let cls = '', label = '';
+  if (n){
+    if (s >= 8){ cls = 'good'; label = 'Favorable'; }
+    else if (n < 5){ label = `ยังไม่ครบ ${n}/5`; }
+    else if (s === 7){ cls = 'mid'; label = 'Borderline'; }
+    else { cls = 'bad'; label = 'Unfavorable'; }
+  }
+  return { score: s, n, cls, label };
+}
+const bishopText = bs => bs.n ? `Bishop ${bs.score}/13 · ${bs.label}` : 'Bishop –';
+function pvParts(pv){
+  const a = [];
+  if (hasPV(pv, 'dil')) a.push(`Cx ${pv.dil} cm`);
+  if (hasPV(pv, 'eff')) a.push(`Eff ${pv.eff}%`);
+  if (hasPV(pv, 'sta')) a.push(`St ${pv.sta}`);
+  if (hasPV(pv, 'cons')) a.push(pvLabel('cons', pv.cons));
+  if (hasPV(pv, 'pos')) a.push(pvLabel('pos', pv.pos));
+  return a;
+}
+const STALE_MS = 4 * 3600e3;
+const LR_EMPTY = () => ({ id:'lr', name:'LR', beds:[] });
+function normLR(l){
+  const lr = LR_EMPTY();
+  lr.beds = (l && Array.isArray(l.beds) ? l.beds : []).map(b => ({
+    ...b, tasks: b.tasks || [], probs: b.probs || [], pv: { ...PV0(), ...(b.pv || {}) }
+  }));
+  return lr;
+}
+
+/* ---------- sync data model ---------- */
+function flatTasks(bp, b, f){
+  (b.tasks || []).forEach(t => {
+    const tp = bp + '/tasks/' + t.id;
+    f[tp + '/text'] = t.text;
+    f[tp + '/done'] = !!t.done;
+    f[tp + '/o'] = t.o || 0;
+    if (t.note) f[tp + '/note'] = t.note;
+    if (t.by) f[tp + '/by'] = t.by;
+    if (t.doneBy) f[tp + '/doneBy'] = t.doneBy;
+    if (t.at) f[tp + '/at'] = t.at;
+  });
+}
 function flatten(s){
   const f = {};
   f['m/round'] = s.round || '';
   Object.entries(s.freq || {}).forEach(([k, v]) => { f['freq/' + encKey(k)] = v; });
+  Object.entries(s.lrFreq || {}).forEach(([k, v]) => { f['lrfreq/' + encKey(k)] = v; });
   s.wards.forEach(w => {
     const wp = 'wards/' + w.id;
     f[wp + '/name'] = w.name;
@@ -294,17 +476,16 @@ function flatten(s){
     w.beds.forEach(b => {
       const bp = wp + '/beds/' + b.id;
       f[bp + '/bed'] = b.bed;
-      b.tasks.forEach(t => {
-        const tp = bp + '/tasks/' + t.id;
-        f[tp + '/text'] = t.text;
-        f[tp + '/done'] = !!t.done;
-        f[tp + '/o'] = t.o || 0;
-        if (t.note) f[tp + '/note'] = t.note;
-        if (t.by) f[tp + '/by'] = t.by;
-        if (t.doneBy) f[tp + '/doneBy'] = t.doneBy;
-        if (t.at) f[tp + '/at'] = t.at;
-      });
+      flatTasks(bp, b, f);
     });
+  });
+  ((s.lr && s.lr.beds) || []).forEach(b => {
+    const bp = 'lr/beds/' + b.id;
+    f[bp + '/bed'] = b.bed;
+    flatTasks(bp, b, f);
+    (b.probs || []).forEach(p => { f[bp + '/prob/' + p.id + '/text'] = p.text; f[bp + '/prob/' + p.id + '/o'] = p.o || 0; });
+    const pv = b.pv || {};
+    PVK.forEach(k => { const v = pv[k]; if (v !== '' && v != null) f[bp + '/pv/' + k] = v; });
   });
   return f;
 }
@@ -326,21 +507,25 @@ function unflatten(f){
   }
   return root;
 }
+const parseTasks = ts => Object.entries(ts || {}).map(([tid, t]) => ({
+  id: tid, text: t.text ?? '', note: t.note || '', done: !!t.done, o: t.o || 0,
+  by: t.by || '', doneBy: t.doneBy || '', at: t.at || 0
+})).filter(t => t.text !== '').sort(byO);
+const parseFreq = o => { const r = {}; Object.entries(o || {}).forEach(([k, v]) => { r[decKey(k)] = v; }); return r; };
 function fromNested(n){
   n = n || {};
-  const freq = {};
-  Object.entries(n.freq || {}).forEach(([k, v]) => { freq[decKey(k)] = v; });
   const wards = Object.entries(n.wards || {}).map(([id, w]) => ({
     id, name: w.name ?? '?', o: w.o || 0,
-    beds: sortBeds(Object.entries(w.beds || {}).map(([bid, b]) => ({
-      id: bid, bed: String(b.bed ?? '?'),
-      tasks: Object.entries(b.tasks || {}).map(([tid, t]) => ({
-        id: tid, text: t.text ?? '', note: t.note || '', done: !!t.done, o: t.o || 0,
-        by: t.by || '', doneBy: t.doneBy || '', at: t.at || 0
-      })).filter(t => t.text !== '').sort(byO)
-    })))
+    beds: sortBeds(Object.entries(w.beds || {}).map(([bid, b]) => ({ id: bid, bed: String(b.bed ?? '?'), tasks: parseTasks(b.tasks) })))
   })).sort(byO);
-  return { wards, freq, round: (n.m && typeof n.m.round === 'string') ? n.m.round : undefined };
+  const lr = LR_EMPTY();
+  lr.beds = sortBeds(Object.entries((n.lr && n.lr.beds) || {}).map(([bid, b]) => ({
+    id: bid, bed: String(b.bed ?? '?'), tasks: parseTasks(b.tasks),
+    probs: Object.entries(b.prob || {}).map(([pid, p]) => ({ id: pid, text: p.text ?? '', o: p.o || 0 })).filter(p => p.text !== '').sort(byO),
+    pv: { ...PV0(), ...(b.pv || {}) }
+  })));
+  return { wards, lr, freq: parseFreq(n.freq), lrFreq: parseFreq(n.lrfreq),
+    round: (n.m && typeof n.m.round === 'string') ? n.m.round : undefined };
 }
 const fromFlat = f => fromNested(unflatten(f));
 function diff(a, b){
@@ -355,21 +540,20 @@ function eqFlat(a, b){
   for (const k of ka) if (a[k] !== b[k]) return false;
   return true;
 }
-// B = base (ที่เคยซิงค์ล่าสุด), L = ในเครื่อง, R = บนเซิร์ฟเวอร์
 function merge3(B, L, R){
   const M = {};
   const keys = new Set([...Object.keys(B), ...Object.keys(L), ...Object.keys(R)]);
   for (const k of keys){
     const b = B[k], l = L[k], r = R[k];
-    const v = (l === r) ? l : (l === b ? r : l);     // ถ้าแก้ชนกันจริง ๆ ให้ยึดของในเครื่อง
+    const v = (l === r) ? l : (l === b ? r : l);
     if (v !== undefined) M[k] = v;
   }
   return M;
 }
-function legacyToState(v){      // แปลงข้อมูลห้องเวอร์ชันเก่า (rooms/<room>)
+function legacyToState(v){
   const arr = x => Array.isArray(x) ? x : (x ? Object.values(x) : []);
   return {
-    round: v.round || '', freq: {},
+    round: v.round || '', freq: {}, lrFreq: {}, lr: LR_EMPTY(),
     wards: arr(v.wards).map((w, i) => ({
       id: w.id || uid('w'), name: w.name || '?', o: i,
       beds: arr(w.beds).map(b => ({
@@ -381,18 +565,24 @@ function legacyToState(v){      // แปลงข้อมูลห้องเ
 }
 
 /* ---------- local state ---------- */
-const KEY = 'wardwork-v1', VKEY = 'wardwork-view', MKEY = 'wardwork-member', RKEY = 'wardwork-room', CKEY = 'wardwork-collapsed', BKEY = 'wardwork-base-';
+const KEY = 'wardwork-v1', VKEY = 'wardwork-view', MKEY = 'wardwork-member', RKEY = 'wardwork-room', CKEY = 'wardwork-collapsed', BKEY = 'wardwork-base-', MOKEY = 'wardwork-mode';
 const COMMON = ['plan endo','plan anes','plan eye','plan ID','plan sx','plan uro','plan nephro','plan hemato',
   'plan nephro/hemato','plan med','plan ortho','plan cardio','lab pre op','lab sepsis','ใบ refer','CTPA',
   'CT chest c WA','CXR','EKG','U/S','H/C','F/U lab','ขอเลือด','consent'];
-// id ของ ward เริ่มต้นตายตัว เพื่อให้หลายเครื่องที่เปิดครั้งแรกรวมกันแล้วไม่ซ้ำ
-const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false, showDate:false, showMember:true, freq:{},
+const LR_COMMON = ['NST','EFM','PV','U/S','CBC','G/M','ขอเลือด','consent','UA','DTX','F/U lab','ATB','MgSO4',
+  'Dexamethasone','Oxytocin','plan induction','plan C/S','set OR','แจ้ง staff','แจ้ง ped','consult med','consult anes'];
+const LR_PROBS = ['GDMA1','GDMA2','Chronic HT','Gestational HT','Preeclampsia','Preeclampsia with severe features',
+  'PROM','PPROM','Preterm labor','Post-term','Previous C/S','Breech','Twin','FGR','Oligohydramnios','Polyhydramnios',
+  'Anemia','Thalassemia carrier','HBV','HIV','Syphilis','GBS +','Hypothyroid','Hyperthyroid','Elderly gravida',
+  'Teenage pregnancy','Placenta previa','Meconium stained','Prolonged latent phase','Arrest of dilatation'];
+const DEFAULT = () => ({ round:'ราวน์เย็น', pendingOnly:false, showDate:false, showMember:true, freq:{}, lrFreq:{}, lr: LR_EMPTY(),
   wards:['Gyne 1','Gyne 2','OB1','OB2'].map((n, i) => ({ id:'w_default_' + i, name:n, o:i, beds:[] })) });
 function loadLocal(){
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
     if (s && Array.isArray(s.wards)){
-      const st = { ...DEFAULT(), ...s, freq: s.freq || {} };
+      const st = { ...DEFAULT(), ...s, freq: s.freq || {}, lrFreq: s.lrFreq || {} };
+      st.lr = normLR(s.lr);
       st.wards.forEach((w, i) => { if (typeof w.o !== 'number') w.o = i; w.beds = w.beds || []; w.beds.forEach(b => { b.tasks = b.tasks || []; }); });
       return st;
     }
@@ -401,6 +591,7 @@ function loadLocal(){
 }
 let currentRoom = sanitizeRoom(localStorage.getItem(RKEY) || '');
 let currentMember = localStorage.getItem(MKEY) || '';
+let mode = localStorage.getItem(MOKEY) === 'lr' ? 'lr' : 'ward';
 const urlRoom = sanitizeRoom(new URLSearchParams(location.search).get('room'));
 if (urlRoom){
   currentRoom = urlRoom; localStorage.setItem(RKEY, urlRoom);
@@ -408,18 +599,21 @@ if (urlRoom){
 }
 let state = loadLocal();
 let collapsed = {}; try { collapsed = JSON.parse(localStorage.getItem(CKEY)) || {}; } catch {}
-let synced = flatten(state);          // สิ่งที่เชื่อว่าเซิร์ฟเวอร์มีอยู่ตอนนี้
-const undoStack = [];                 // เก็บเฉพาะ "ส่วนต่าง" ของแต่ละการแก้ไข {path:[ก่อน,หลัง]}
+let synced = flatten(state);
+const undoStack = [];
 let activeBed = null, rendering = false;
 
 const wardsEl = $('wards');
 const roundEl = $('round'), pendEl = $('pendingOnly'), dateEl = $('showDate'), memEl = $('showMember');
-const findWard = id => state.wards.find(w => w.id === id);
-function findBed(id){ for (const w of state.wards){ const b = w.beds.find(x => x.id === id); if (b) return {w, b}; } return null; }
-const hasTasks = () => state.wards.some(w => w.beds.some(b => b.tasks.length));
+const findWard = id => id === 'lr' ? state.lr : state.wards.find(w => w.id === id);
+function findBed(id){ for (const w of [...state.wards, state.lr]){ const b = w.beds.find(x => x.id === id); if (b) return {w, b}; } return null; }
+const hasTasks = () => state.wards.some(w => w.beds.some(b => b.tasks.length)) || state.lr.beds.length > 0;
 const nextWardO = () => Math.max(-1, ...state.wards.map(w => w.o || 0)) + 1;
 const persistLocal = () => localStorage.setItem(KEY, JSON.stringify(state));
-function setShared(s){ state.wards = s.wards; state.freq = s.freq; if (s.round !== undefined) state.round = s.round; }
+function setShared(s){
+  state.wards = s.wards; state.freq = s.freq; state.lr = s.lr; state.lrFreq = s.lrFreq;
+  if (s.round !== undefined) state.round = s.round;
+}
 
 /* ---------- Firebase connection ---------- */
 let db = null;
@@ -428,7 +622,7 @@ if (typeof firebase !== 'undefined'){
   catch (e) { console.error(e); }
 }
 let dataRef = null, presRef = null, listeners = [];
-let phase = 'off';           // off | init | live
+let phase = 'off';
 let joined = false, pending = 0, online = false, presence = {}, logs = [];
 const clientId = uid('c');
 const roomPath = () => 'rooms/' + currentRoom + '/v2';
@@ -471,8 +665,8 @@ function onRemote(snap){
   if (phase === 'init'){ phase = 'initializing'; return initialSync(snap.val()); }
   if (phase !== 'live') return;
   const val = snap.val(), R = flatNested(val);
-  if (eqFlat(R, synced)) return;                  // เสียงสะท้อนของที่เราเพิ่งส่ง
-  setShared(fromNested(val)); synced = R;         // มีคนอื่นแก้ไข
+  if (eqFlat(R, synced)) return;
+  setShared(fromNested(val)); synced = R;
   persistLocal(); if (!pending) persistBase(R);
   if (document.activeElement !== roundEl) roundEl.value = state.round;
   whenIdle(() => render());
@@ -492,7 +686,6 @@ function initialSync(val){
   };
   if (!hasR){
     if (B) return finish(merge3(B, L, R));
-    // ห้องใหม่: ลองย้ายข้อมูลจากเวอร์ชันเก่า ไม่มีก็อัปโหลดข้อมูลในเครื่อง
     db.ref('rooms/' + room).once('value').then(s => {
       const v = s.val();
       if (v && Array.isArray(v.wards)){ toast('ย้ายข้อมูลห้องเดิมมาให้แล้ว'); finish(flatten({ ...legacyToState(v) })); }
@@ -529,7 +722,7 @@ function save(undo = true){
     }
     synced = nf; push(ch);
   }
-  persistLocal(); updateOutput(); renderChecklist();
+  persistLocal(); updateOutput(); renderChecklist(); renderTracker();
 }
 function undo(){
   const rec = undoStack.pop();
@@ -563,26 +756,32 @@ function updateSync(){
   el.innerHTML = ic + `<span class="lbl">${esc(txt)}</span>`; el.title = tip;
 }
 function renderLog(){
-  const box = $('logList'); if (!box) return;
-  box.innerHTML = logs.length
+  const html = logs.length
     ? logs.slice().reverse().map(l => `<div><time>${esc(fmtT(l.t))}</time><b>${esc(l.by)}</b> ${esc(l.msg)}</div>`).join('')
     : '<span class="empty">ยังไม่มีความเคลื่อนไหว (ต้องเชื่อมต่อห้องก่อน)</span>';
+  document.querySelectorAll('[data-loglist]').forEach(b => { b.innerHTML = html; });
 }
 
-/* ---------- view mode ---------- */
+/* ---------- view mode & app mode ---------- */
 const VIEWS = { auto:{ icon:'🔄', name:'อัตโนมัติ' }, mobile:{ icon:'📱', name:'มือถือ' }, desktop:{ icon:'💻', name:'คอม' } };
 let viewPref = localStorage.getItem(VKEY) || 'auto';
 let tab = 'edit', editScroll = 0;
 const mq = matchMedia('(max-width: 899px)');
 function currentMode(){ return viewPref === 'auto' ? (mq.matches ? 'mobile' : 'desktop') : viewPref; }
 function applyView(){
-  const mode = currentMode(), cl = document.body.classList;
-  cl.toggle('mobile', mode === 'mobile'); cl.toggle('desktop', mode === 'desktop');
+  const vm = currentMode(), cl = document.body.classList;
+  if (mode === 'lr' && tab === 'out') tab = 'check';
+  cl.toggle('mobile', vm === 'mobile'); cl.toggle('desktop', vm === 'desktop');
+  cl.toggle('lr', mode === 'lr'); cl.toggle('ward', mode !== 'lr');
   cl.remove('tab-edit', 'tab-check', 'tab-out');
-  if (mode === 'mobile') cl.add(`tab-${tab}`);
+  if (vm === 'mobile') cl.add(`tab-${tab}`);
   const v = VIEWS[viewPref];
   $('viewBtn').innerHTML = `${v.icon}<span class="lbl"> ${v.name}</span>`;
+  $('appTitle').textContent = mode === 'lr' ? '🤰 LR Work' : '📋 Ward Work';
+  $('navCheckLbl').textContent = mode === 'lr' ? '📊 ติดตาม' : '☑️ ติ๊กงาน';
+  document.querySelectorAll('#modeSw [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
   document.querySelectorAll('#mnav [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = mode === 'lr' ? '#be185d' : '#0f766e';
   setHH();
 }
 function cycleView(){
@@ -592,8 +791,17 @@ function cycleView(){
 }
 function setTab(t){
   if (t === tab) return;
+  if (mode === 'lr' && t === 'out') return;
   if (t === 'out' || t === 'check'){ editScroll = window.scrollY; commitDrafts(); }
   tab = t; applyView(); window.scrollTo(0, t === 'edit' ? editScroll : 0);
+}
+function setMode(m){
+  if (m === mode) return;
+  commitDrafts();
+  mode = m; localStorage.setItem(MOKEY, m);
+  activeBed = null; editScroll = 0;
+  applyView(); render(); window.scrollTo(0, 0);
+  toast(m === 'lr' ? '🤰 โหมดห้องคลอด (LR)' : '🏥 โหมด Ward');
 }
 if (mq.addEventListener) mq.addEventListener('change', applyView); else mq.addListener(applyView);
 
@@ -624,14 +832,14 @@ function splitTasks(str){
   return parts.map(s => s.trim()).filter(Boolean).map(parseTask).filter(t => t.text);
 }
 function setDone(tk, done){ tk.done = done; tk.doneBy = done ? currentMember : ''; tk.at = Date.now(); }
-// คืนรายชื่องานที่เพิ่มจริง
 function addTaskObjs(b, arr, dedupeAll = false){
   const added = [];
+  const fq = state.lr.beds.includes(b) ? state.lrFreq : state.freq;
   arr.forEach(t => {
     if (b.tasks.some(x => (dedupeAll || !x.done) && x.text === t.text && x.note === (t.note || ''))) return;
     b.tasks.push({ id: uid('t'), text: t.text, note: t.note || '', done: !!t.done, o: taskO(),
       by: currentMember, doneBy: t.done ? currentMember : '', at: Date.now() });
-    state.freq[t.text] = (state.freq[t.text] || 0) + 1;
+    fq[t.text] = (fq[t.text] || 0) + 1;
     added.push(t.text);
   });
   return added;
@@ -642,19 +850,41 @@ function addTasks(bedIdVal, val){
   if (added.length) logAct(`➕ ${f.w.name} เตียง ${f.b.bed}: ${added.join(', ')}`);
   return added.length;
 }
+function addProbs(bid, val){
+  const f = findBed(bid); if (!f) return 0;
+  f.b.probs = f.b.probs || [];
+  const items = String(val).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+  const added = [];
+  items.forEach(t => {
+    if (f.b.probs.some(p => p.text.toLowerCase() === t.toLowerCase())) return;
+    f.b.probs.push({ id: uid('p'), text: t, o: taskO() }); added.push(t);
+  });
+  if (added.length) logAct(`🩺 LR เตียง ${f.b.bed}: + ${added.join(', ')}`);
+  return added.length;
+}
 function makeBed(w, name){
-  let id = bedId(w.id, name);               // id คงที่ตามชื่อเตียง: สองคนเพิ่มเตียงเดียวกันพร้อมกันจะรวมกันเอง
-  if (w.beds.some(x => x.id === id)) id = uid('b');
-  const b = { id, bed: name, tasks: [] }; w.beds.push(b); return b;
+  let id;
+  if (w.id === 'lr') id = uid('b');
+  else { id = bedId(w.id, name); if (w.beds.some(x => x.id === id)) id = uid('b'); }
+  const b = { id, bed: name, tasks: [] };
+  if (w.id === 'lr'){ b.probs = []; b.pv = PV0(); }
+  w.beds.push(b); return b;
 }
 function addBed(wardId){
   const input = wardsEl.querySelector(q('data-bedin', wardId));
   const raw = input.value.trim(); if (!raw) return;
-  let bedPart = raw, taskPart = '';
-  const ci = raw.indexOf(':');
-  if (ci >= 0){ bedPart = raw.slice(0, ci); taskPart = raw.slice(ci + 1).trim(); }
-  const names = bedPart.split(/[\s,]+/).filter(Boolean); if (!names.length) return;
-  const w = findWard(wardId); const ids = [], created = [];
+  const w = findWard(wardId); if (!w) return;
+  let names, taskPart = '';
+  if (wardId === 'lr'){
+    names = raw.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+  } else {
+    let bedPart = raw;
+    const ci = raw.indexOf(':');
+    if (ci >= 0){ bedPart = raw.slice(0, ci); taskPart = raw.slice(ci + 1).trim(); }
+    names = bedPart.split(/[\s,]+/).filter(Boolean);
+  }
+  if (!names.length) return;
+  const ids = [], created = [];
   names.forEach(n => {
     let b = w.beds.find(x => x.bed === n);
     if (!b){ b = makeBed(w, n); created.push(n); }
@@ -665,11 +895,14 @@ function addBed(wardId){
   input.value = '';
   sortBeds(w.beds); save();
   if (ids.length === 1) activeBed = ids[0];
-  render(!taskPart && ids.length === 1 ? q('data-taskin', ids[0]) : q('data-bedin', wardId));
+  let focus = q('data-bedin', wardId);
+  if (!taskPart && ids.length === 1) focus = wardId === 'lr' ? q('data-probin', ids[0]) : q('data-taskin', ids[0]);
+  render(focus);
 }
 function commitDrafts(){
   let n = 0;
   wardsEl.querySelectorAll('[data-taskin]').forEach(i => { if (i.value.trim()){ n += addTasks(i.dataset.taskin, i.value); i.value = ''; } });
+  wardsEl.querySelectorAll('[data-probin]').forEach(i => { if (i.value.trim()){ n += addProbs(i.dataset.probin, i.value); i.value = ''; } });
   if (n){ save(); render(); }
   return n;
 }
@@ -703,48 +936,75 @@ function tasksHTML(b){
       <button class="x" data-act="delTask" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">×</button>
     </span>`).join('');
 }
-function renderChecklist(){
-  const only = $('ckPending').checked;
-  let html = '';
-  state.wards.forEach(w => {
-    let wh = '', done = 0, tot = 0;
-    w.beds.forEach(b => {
-      if (!b.tasks.length) return;
-      let bh = '';
-      b.tasks.forEach(t => {
-        tot++; if (t.done) done++;
-        if (only && t.done) return;
-        bh += `
-          <div class="check-item-row ${t.done ? 'done' : ''}" data-act="toggleCheck" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">
-            <span class="t-icon">${t.done ? '✅' : '⭕️'}</span>
-            <span class="t-text">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
-            <span class="who">${esc(whoText(t))}</span>
-          </div>`;
-      });
-      if (bh) wh += `<div class="check-bed">เตียง ${esc(b.bed)}</div>` + bh;
-    });
-    if (wh) html += `<div class="check-ward-group"><div class="check-ward-title">${esc(w.name)} <span class="badge ${done === tot ? 'ok' : ''}">${done}/${tot}</span></div>${wh}</div>`;
-  });
-  $('checklistContainer').innerHTML = html || `<p class="empty">${only ? 'ไม่มีงานค้าง 🎉' : 'ยังไม่มีงานในระบบ'}</p>`;
+function probsHTML(b){
+  if (!b.probs || !b.probs.length) return '<span class="empty">ยังไม่มี problem</span>';
+  return b.probs.map(p => `
+    <span class="prob">
+      <span class="pt" data-act="editProb" data-bed="${esc(b.id)}" data-prob="${esc(p.id)}">${esc(p.text)}</span>
+      <button class="x" data-act="delProb" data-bed="${esc(b.id)}" data-prob="${esc(p.id)}">×</button>
+    </span>`).join('');
 }
-function focusKey(el){
-  if (!el || !el.dataset) return null;
-  if (el.dataset.taskin) return q('data-taskin', el.dataset.taskin);
-  if (el.dataset.bedin) return q('data-bedin', el.dataset.bedin);
-  if (el.classList.contains('bed-no')) return '.bed-no' + q('data-bed', el.dataset.bed);
-  if (el.classList.contains('ward-name')) return '.ward-name' + q('data-ward', el.dataset.ward);
-  return null;
+function pvSelHTML(k, b){
+  const cur = b.pv[k];
+  return `<div class="pv-f"><span>${PV_OPT[k].label}</span>
+    <select data-pv="${k}" data-bed="${esc(b.id)}"><option value="">–</option>${
+      PV_OPT[k].opts.map(([v, l]) => `<option value="${esc(v)}"${cur === v ? ' selected' : ''}>${esc(l)}</option>`).join('')
+    }</select></div>`;
 }
-function render(focusSel){
-  rendering = true;
-  const drafts = {};
-  wardsEl.querySelectorAll('[data-taskin],[data-bedin]').forEach(i => { const k = focusKey(i); if (i.value && k) drafts[k] = i.value; });
-  const ae = document.activeElement;
-  const selS = ae && ae.selectionStart, selE = ae && ae.selectionEnd;
-  const keep = focusSel || focusKey(ae);
-  if (activeBed && !findBed(activeBed)) activeBed = null;
-
-  wardsEl.innerHTML = state.wards.map(w => `
+function lrBedHTML(b){
+  const bs = bishop(b.pv), id = esc(b.id);
+  return `
+  <div class="bed lrbed ${b.id === activeBed ? 'active' : ''}" data-bedbox="${id}">
+    <div class="bed-head">
+      <span class="lr-ic">🛏</span>
+      <input class="bed-no" data-bed="${id}" value="${esc(b.bed)}" enterkeyhint="done" placeholder="เตียง / G P / GA">
+      <button class="icon" data-act="allDone" data-bed="${id}" title="ติ๊กงานทั้งเตียง">✓ งาน</button>
+      <button class="icon danger" data-act="delBed" data-bed="${id}" title="ลบเตียง">✕</button>
+    </div>
+    <div class="lr-sec">
+      <div class="lr-lbl">🩺 Problem list</div>
+      <div class="probs">${probsHTML(b)}</div>
+      <form class="task-form" data-probform="${id}">
+        <input class="task-in" list="probList" data-probin="${id}" autocomplete="off" enterkeyhint="enter" placeholder="+ problem เช่น GDMA2, PROM (คั่นด้วย , )">
+        <button type="submit" data-keepfocus>+</button>
+      </form>
+    </div>
+    <div class="lr-sec">
+      <div class="lr-lbl">🔍 Last PV <span class="bishop ${bs.cls}" data-bishop="${id}">${esc(bishopText(bs))}</span>
+        <span style="flex:1"></span><button type="button" class="icon mini" data-act="pvClear" data-bed="${id}">ล้าง PV</button></div>
+      <div class="pv-grid">
+        <div class="pv-f time"><span>เวลาตรวจ</span>
+          <div class="pv-time"><input type="time" data-pv="t" data-bed="${id}" value="${msToTime(b.pv.t)}">
+          <button type="button" class="icon" data-act="pvNow" data-bed="${id}">⏱ ตอนนี้</button></div></div>
+        ${['dil','eff','sta','cons','pos'].map(k => pvSelHTML(k, b)).join('')}
+        <div class="pv-f wide"><span>หมายเหตุ</span>
+          <input data-pv="note" data-bed="${id}" value="${esc(b.pv.note || '')}" autocomplete="off" enterkeyhint="done" placeholder="เช่น MI, MR clear, show"></div>
+      </div>
+    </div>
+    <div class="lr-sec">
+      <div class="lr-lbl">📋 งานที่ต้องทำ</div>
+      <div class="tasks" data-tasks="${id}">${tasksHTML(b)}</div>
+      <form class="task-form" data-taskform="${id}">
+        <input class="task-in" list="taskList" data-taskin="${id}" autocomplete="off" enterkeyhint="enter" placeholder="+ งาน (คั่นด้วย , )">
+        <button type="submit" data-keepfocus>+</button>
+      </form>
+    </div>
+  </div>`;
+}
+function lrHTML(){
+  const beds = state.lr.beds;
+  return `
+  <div class="ward lr-addbox">
+    <form class="add-bed" data-bedform="lr" style="margin-top:0">
+      <input class="bed-in" data-bedin="lr" autocomplete="off" enterkeyhint="enter" placeholder="เพิ่มเตียง เช่น LR1 G2P1 GA 39+2 wk">
+      <button type="submit" data-keepfocus style="background:#be185d">+ เตียง</button>
+    </form>
+    <p class="hint">เพิ่มหลายเตียงคั่นด้วย , · เลือกค่า PV แล้วระบบคำนวณ Bishop score ให้อัตโนมัติ · <b>ห้ามใส่ชื่อ-นามสกุลหรือ HN</b></p>
+  </div>
+  ${beds.length ? beds.map(lrBedHTML).join('') : '<p class="empty" style="text-align:center;padding:24px">ยังไม่มีเตียงในห้องคลอด</p>'}`;
+}
+function wardsHTML(){
+  return state.wards.map(w => `
     <div class="ward ${collapsed[w.id] ? 'collapsed' : ''}">
       <div class="ward-head">
         <button class="icon" data-act="collapse" data-ward="${esc(w.id)}">${collapsed[w.id] ? '▸' : '▾'}</button>
@@ -775,6 +1035,112 @@ function render(focusSel){
         </form>
       </div>
     </div>`).join('');
+}
+function renderChecklist(){
+  const only = $('ckPending').checked;
+  let html = '';
+  state.wards.forEach(w => {
+    let wh = '', done = 0, tot = 0;
+    w.beds.forEach(b => {
+      if (!b.tasks.length) return;
+      let bh = '';
+      b.tasks.forEach(t => {
+        tot++; if (t.done) done++;
+        if (only && t.done) return;
+        bh += `
+          <div class="check-item-row ${t.done ? 'done' : ''}" data-act="toggleCheck" data-bed="${esc(b.id)}" data-task="${esc(t.id)}">
+            <span class="t-icon">${t.done ? '✅' : '⭕️'}</span>
+            <span class="t-text">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+            <span class="who">${esc(whoText(t))}</span>
+          </div>`;
+      });
+      if (bh) wh += `<div class="check-bed">เตียง ${esc(b.bed)}</div>` + bh;
+    });
+    if (wh) html += `<div class="check-ward-group"><div class="check-ward-title">${esc(w.name)} <span class="badge ${done === tot ? 'ok' : ''}">${done}/${tot}</span></div>${wh}</div>`;
+  });
+  $('checklistContainer').innerHTML = html || `<p class="empty">${only ? 'ไม่มีงานค้าง 🎉' : 'ยังไม่มีงานในระบบ'}</p>`;
+}
+
+/* ---------- LR tracker ---------- */
+function pvCardHTML(pv){
+  const bs = bishop(pv), parts = pvParts(pv);
+  if (!bs.n && !pv.t && !pv.note) return '<div class="tc-pv nopv">🔍 ยังไม่ได้บันทึก PV</div>';
+  const age = pv.t ? Date.now() - pv.t : null, stale = age !== null && age > STALE_MS;
+  return `<div class="tc-pv">
+    <div class="pv-score ${bs.cls}"><b>${bs.n ? bs.score : '–'}</b><small>Bishop</small></div>
+    <div class="pv-info">
+      ${bs.label ? `<div class="pv-lbl">${esc(bs.label)}</div>` : ''}
+      ${parts.length ? `<div class="pv-parts">${parts.map(p => `<span>${esc(p)}</span>`).join('')}</div>` : ''}
+      <div class="pv-when ${stale ? 'stale' : ''}">${pv.t ? `${stale ? '⏰ ' : ''}PV ${esc(fmtT(pv.t))} · ${esc(ago(age))}` : 'ไม่ระบุเวลา'}${pv.by ? ` · ${esc(pv.by)}` : ''}</div>
+      ${pv.note ? `<div class="pv-note">📝 ${esc(pv.note)}</div>` : ''}
+    </div>
+  </div>`;
+}
+function renderTracker(){
+  const grid = $('trGrid'); if (!grid) return;
+  const only = $('trPending').checked, beds = state.lr.beds, now = Date.now();
+  let p = 0, d = 0, stale = 0;
+  const cards = beds.map(b => {
+    const tp = b.tasks.filter(t => !t.done).length, td = b.tasks.length - tp;
+    p += tp; d += td;
+    if (b.pv.t && now - b.pv.t > STALE_MS) stale++;
+    const pct = b.tasks.length ? Math.round(td / b.tasks.length * 100) : 0;
+    const tasks = b.tasks.filter(t => !only || !t.done);
+    const id = esc(b.id);
+    return `<article class="tcard ${b.tasks.length ? (tp ? '' : 'clear') : 'none'}">
+      <div class="tc-top">
+        <div class="tc-bed">🛏 ${esc(b.bed)}</div>
+        <div class="ring" style="--p:${pct}" title="เสร็จ ${td}/${b.tasks.length}"><span>${td}/${b.tasks.length}</span></div>
+        <button class="tc-edit" data-act="goEdit" data-bed="${id}" title="แก้ไขเตียงนี้">✏️</button>
+      </div>
+      ${b.probs.length ? `<div class="tc-probs">${b.probs.map(x => `<span class="tag">${esc(x.text)}</span>`).join('')}</div>` : ''}
+      ${pvCardHTML(b.pv)}
+      <div class="tc-tasks">${tasks.length ? tasks.map(t => `
+        <div class="tc-task ${t.done ? 'done' : ''}" data-act="trToggle" data-bed="${id}" data-task="${esc(t.id)}">
+          <span>${t.done ? '✅' : '⭕️'}</span>
+          <span class="t-text">${esc(t.text)}${t.note ? ` <small>(${esc(t.note)})</small>` : ''}</span>
+          <span class="who">${esc(whoText(t))}</span>
+        </div>`).join('') : `<div class="empty">${b.tasks.length ? 'ไม่มีงานค้าง 🎉' : 'ยังไม่มีงาน'}</div>`}
+      </div>
+    </article>`;
+  });
+  $('trSum').innerHTML = `
+    <div><b>${beds.length}</b><small>🤰 ผู้ป่วย</small></div>
+    <div><b>${p}</b><small>⭕️ งานค้าง</small></div>
+    <div><b>${d}</b><small>✅ เสร็จแล้ว</small></div>
+    <div class="${stale ? 'alert' : ''}"><b>${stale}</b><small>⏰ PV เกิน 4 ชม.</small></div>`;
+  $('trClock').textContent = `อัปเดต ${msToTime(now)}`;
+  grid.innerHTML = cards.join('') || `<div class="tr-empty">ยังไม่มีผู้ป่วยในห้องคลอด<br><small>ไปที่หน้า "📝 จัดการ" เพื่อเพิ่มเตียง</small></div>`;
+}
+function goEdit(bid){
+  if (currentMode() === 'mobile') setTab('edit');
+  setActive(bid);
+  setTimeout(() => {
+    const bx = wardsEl.querySelector(q('data-bedbox', bid));
+    if (bx) bx.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 50);
+}
+
+function focusKey(el){
+  if (!el || !el.dataset) return null;
+  if (el.dataset.taskin) return q('data-taskin', el.dataset.taskin);
+  if (el.dataset.probin) return q('data-probin', el.dataset.probin);
+  if (el.dataset.bedin) return q('data-bedin', el.dataset.bedin);
+  if (el.dataset.pv) return `[data-pv="${el.dataset.pv}"]` + q('data-bed', el.dataset.bed);
+  if (el.classList.contains('bed-no')) return '.bed-no' + q('data-bed', el.dataset.bed);
+  if (el.classList.contains('ward-name')) return '.ward-name' + q('data-ward', el.dataset.ward);
+  return null;
+}
+function render(focusSel){
+  rendering = true;
+  const drafts = {};
+  wardsEl.querySelectorAll('[data-taskin],[data-bedin],[data-probin]').forEach(i => { const k = focusKey(i); if (i.value && k) drafts[k] = i.value; });
+  const ae = document.activeElement;
+  let selS = null, selE = null; try { selS = ae && ae.selectionStart; selE = ae && ae.selectionEnd; } catch {}
+  const keep = focusSel || focusKey(ae);
+  if (activeBed && !findBed(activeBed)) activeBed = null;
+
+  wardsEl.innerHTML = mode === 'lr' ? lrHTML() : wardsHTML();
 
   for (const [sel, v] of Object.entries(drafts)){ const i = wardsEl.querySelector(sel); if (i) i.value = v; }
   if (keep){
@@ -782,26 +1148,38 @@ function render(focusSel){
     if (f){ f.focus(); if (!focusSel && typeof selS === 'number'){ try { f.setSelectionRange(selS, selE); } catch {} } }
   }
   rendering = false;
-  updateDatalist(); updateQuickbar(); updateOutput(); renderChecklist();
+  updateDatalist(); updateQuickbar(); updateOutput(); renderChecklist(); renderTracker();
 }
 function refreshBed(id){
   const f = findBed(id), box = wardsEl.querySelector(q('data-tasks', id));
   if (f && box) box.innerHTML = tasksHTML(f.b);
-  updateDatalist(); updateOutput(); renderChecklist();
+  updateDatalist(); updateOutput(); renderChecklist(); renderTracker();
+}
+function refreshPV(bid){
+  const f = findBed(bid); if (!f || !f.b.pv) return;
+  const bs = bishop(f.b.pv);
+  const el = wardsEl.querySelector(q('data-bishop', bid));
+  if (el){ el.className = 'bishop ' + bs.cls; el.textContent = bishopText(bs); }
+  const ti = wardsEl.querySelector('[data-pv="t"]' + q('data-bed', bid));
+  if (ti && document.activeElement !== ti) ti.value = msToTime(f.b.pv.t);
 }
 function updateDatalist(){
-  const set = new Set(COMMON);
-  Object.keys(state.freq).forEach(t => set.add(t));
-  state.wards.forEach(w => w.beds.forEach(b => b.tasks.forEach(t => set.add(t.text))));
+  const set = new Set(mode === 'lr' ? LR_COMMON : COMMON);
+  Object.keys(mode === 'lr' ? state.lrFreq : state.freq).forEach(t => set.add(t));
+  (mode === 'lr' ? [state.lr] : state.wards).forEach(w => w.beds.forEach(b => b.tasks.forEach(t => set.add(t.text))));
   $('taskList').innerHTML = [...set].map(t => `<option value="${esc(t)}">`).join('');
+  const ps = new Set(LR_PROBS);
+  state.lr.beds.forEach(b => (b.probs || []).forEach(p => ps.add(p.text)));
+  $('probList').innerHTML = [...ps].map(t => `<option value="${esc(t)}">`).join('');
 }
 function updateQuickbar(){
   const qb = $('quickbar'), f = activeBed && findBed(activeBed);
   if (!f){ qb.hidden = true; setHH(); return; }
   qb.hidden = false;
   $('qbLabel').textContent = `⚡ ${f.w.name} · ${f.b.bed}:`;
-  const all = [...new Set([...Object.keys(state.freq), ...COMMON])]
-    .sort((a, b) => (state.freq[b] || 0) - (state.freq[a] || 0)).slice(0, 16);
+  const fq = mode === 'lr' ? state.lrFreq : state.freq;
+  const all = [...new Set([...Object.keys(fq), ...(mode === 'lr' ? LR_COMMON : COMMON)])]
+    .sort((a, b) => (fq[b] || 0) - (fq[a] || 0)).slice(0, 16);
   $('chips').innerHTML = all.map(t => `<button class="chip" data-chip="${esc(t)}">${esc(t)}</button>`).join('');
   setHH();
 }
@@ -814,7 +1192,7 @@ function setActive(id){
   updateQuickbar();
 }
 
-/* ---------- output text ---------- */
+/* ---------- output text (Ward) ---------- */
 function headerText(){
   let h = state.round || '';
   if (state.showDate) h += ' ' + new Date().toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
@@ -842,8 +1220,12 @@ function updateOutput(){
     const el = wardsEl.querySelector(q('data-badge', w.id));
     if (el){ el.textContent = wp ? `⭕️ ${wp}` : (w.beds.length ? '✓ ครบ' : ''); el.className = 'badge' + (wp ? '' : ' ok'); }
   });
-  $('stat').textContent = `⭕️ ${p}  ✅ ${d}`;
+  let lp = 0, ld = 0;
+  state.lr.beds.forEach(b => b.tasks.forEach(t => t.done ? ld++ : lp++));
+  const [P, D] = mode === 'lr' ? [lp, ld] : [p, d];
+  $('stat').textContent = `⭕️ ${P}  ✅ ${D}`;
   $('navCount').textContent = p ? `(⭕️${p})` : '';
+  $('navCheckCount').textContent = mode === 'lr' && lp ? `(⭕️${lp})` : '';
 }
 
 /* ---------- events ---------- */
@@ -863,21 +1245,30 @@ wardsEl.addEventListener('submit', e => {
     const v = inp.value; inp.value = '';
     if (addTasks(id, v)){ save(); render(q('data-taskin', id)); }
     else { if (v.trim()) toast('งานนี้มีอยู่แล้ว'); inp.focus(); }
+  } else if (f.dataset.probform){
+    const id = f.dataset.probform, inp = f.querySelector('input');
+    const v = inp.value; inp.value = '';
+    if (addProbs(id, v)){ save(); render(q('data-probin', id)); }
+    else { if (v.trim()) toast('problem นี้มีอยู่แล้ว'); inp.focus(); }
   } else if (f.dataset.bedform) addBed(f.dataset.bedform);
 });
 wardsEl.addEventListener('focusout', e => {
   if (rendering) return;
-  const id = e.target.dataset && e.target.dataset.taskin;
-  if (!id || !e.target.value.trim()) return;
-  const v = e.target.value; e.target.value = '';
-  if (addTasks(id, v)){ save(); whenIdle(() => refreshBed(id)); toast('บันทึกงานที่พิมพ์ค้างไว้แล้ว'); }
+  const ds = e.target.dataset || {};
+  if (ds.taskin && e.target.value.trim()){
+    const id = ds.taskin, v = e.target.value; e.target.value = '';
+    if (addTasks(id, v)){ save(); whenIdle(() => refreshBed(id)); toast('บันทึกงานที่พิมพ์ค้างไว้แล้ว'); }
+  } else if (ds.probin && e.target.value.trim()){
+    const id = ds.probin, v = e.target.value; e.target.value = '';
+    if (addProbs(id, v)){ save(); whenIdle(() => render()); toast('บันทึก problem ที่พิมพ์ค้างไว้แล้ว'); }
+  }
 });
 wardsEl.addEventListener('focusin', e => { const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox); });
 
 wardsEl.addEventListener('click', e => {
   const bx = e.target.closest('[data-bedbox]'); if (bx) setActive(bx.dataset.bedbox);
   const t = e.target.closest('[data-act]'); if (!t) return;
-  const { act, ward, bed, task } = t.dataset;
+  const { act, ward, bed, task, prob } = t.dataset;
   const w = ward ? findWard(ward) : null;
   const fb = bed ? findBed(bed) : null;
   if ((ward && !w) || (bed && !fb)) return;
@@ -894,9 +1285,11 @@ wardsEl.addEventListener('click', e => {
     case 'delWard':
       if (!confirm(`ลบ ${w.name} ทั้ง ward?` + roomNote())) return;
       state.wards = state.wards.filter(x => x !== w); logAct(`🗑 ลบ ward ${w.name}`); break;
-    case 'delBed':
-      if (fb.b.tasks.length && !confirm(`ลบเตียง ${fb.b.bed}?` + roomNote())) return;
+    case 'delBed': {
+      const hasData = fb.b.tasks.length || (fb.b.probs && fb.b.probs.length) || (fb.b.pv && bishop(fb.b.pv).n);
+      if (hasData && !confirm(`ลบเตียง ${fb.b.bed}?` + roomNote())) return;
       fb.w.beds = fb.w.beds.filter(x => x !== fb.b); logAct(`✕ ${fb.w.name}: ลบเตียง ${fb.b.bed}`); break;
+    }
     case 'allDone': {
       if (!fb.b.tasks.length) return;
       const all = fb.b.tasks.every(x => x.done);
@@ -920,10 +1313,48 @@ wardsEl.addEventListener('click', e => {
       }
       break;
     }
+    case 'delProb': case 'editProb': {
+      const pr = (fb.b.probs || []).find(x => x.id === prob); if (!pr) return;
+      if (act === 'delProb'){
+        fb.b.probs = fb.b.probs.filter(x => x !== pr); logAct(`🩺 LR เตียง ${fb.b.bed}: ลบ ${pr.text}`);
+      } else {
+        const v = prompt('แก้ไข problem', pr.text);
+        if (v === null) return;
+        if (!v.trim()) fb.b.probs = fb.b.probs.filter(x => x !== pr);
+        else pr.text = v.trim();
+      }
+      break;
+    }
+    case 'pvNow':
+      fb.b.pv.t = Date.now(); fb.b.pv.by = currentMember;
+      save(); refreshPV(fb.b.id); toast('⏱ ตั้งเวลา PV = ตอนนี้'); return;
+    case 'pvClear':
+      if (!bishop(fb.b.pv).n && !fb.b.pv.t && !fb.b.pv.note) return;
+      if (!confirm(`ล้างข้อมูล PV ของเตียง ${fb.b.bed}?`)) return;
+      fb.b.pv = PV0(); logAct(`🔍 LR เตียง ${fb.b.bed}: ล้าง PV`); break;
     default: return;
   }
   save(); render();
 });
+
+/* PV fields */
+const pvLogT = {};
+function onPV(el, commit){
+  const f = findBed(el.dataset.bed); if (!f) return;
+  const k = el.dataset.pv, pv = f.b.pv || (f.b.pv = PV0());
+  if (k === 't') pv.t = el.value ? timeToMs(el.value) : '';
+  else { pv[k] = el.value; if (!pv.t && el.value) pv.t = Date.now(); }
+  pv.by = currentMember;
+  save(commit); refreshPV(f.b.id);
+  if (commit){
+    clearTimeout(pvLogT[f.b.id]);
+    pvLogT[f.b.id] = setTimeout(() => {
+      const ff = findBed(f.b.id); if (!ff) return;
+      const bs = bishop(ff.b.pv);
+      logAct(`🔍 LR เตียง ${ff.b.bed}: PV ${pvParts(ff.b.pv).join(' ') || '-'}${bs.n ? ` · Bishop ${bs.score}` : ''}`);
+    }, 4000);
+  }
+}
 
 $('checklistContainer').addEventListener('click', e => {
   const row = e.target.closest('[data-act="toggleCheck"]'); if (!row) return;
@@ -936,18 +1367,41 @@ $('checklistContainer').addEventListener('click', e => {
 });
 $('ckPending').onchange = renderChecklist;
 
+$('trGrid').addEventListener('click', e => {
+  const ed = e.target.closest('[data-act="goEdit"]'); if (ed) return goEdit(ed.dataset.bed);
+  const row = e.target.closest('[data-act="trToggle"]'); if (!row) return;
+  const { bed, task } = row.dataset;
+  const fb = findBed(bed); if (!fb) return;
+  const tk = fb.b.tasks.find(x => x.id === task); if (!tk) return;
+  setDone(tk, !tk.done);
+  logAct(`${tk.done ? '✅' : '⭕️'} LR เตียง ${fb.b.bed}: ${tk.text}`);
+  save(); refreshBed(bed);
+});
+$('trPending').onchange = renderTracker;
+$('trClean').onclick = () => {
+  const n = state.lr.beds.reduce((a, b) => a + b.tasks.filter(t => t.done).length, 0);
+  if (!n) return toast('ไม่มีงานที่เสร็จแล้ว');
+  if (!confirm(`ลบงานที่ ✅ แล้ว ${n} งานในห้องคลอด?` + roomNote())) return;
+  state.lr.beds.forEach(b => { b.tasks = b.tasks.filter(t => !t.done); });
+  save(); render(); logAct(`🧹 LR: ลบงานที่เสร็จแล้ว ${n} งาน`); toast('ลบงานที่เสร็จแล้ว');
+};
+
 wardsEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.target.classList.contains('bed-no') || e.target.classList.contains('ward-name'))){ e.preventDefault(); e.target.blur(); }
+  const c = e.target.classList;
+  if (e.key === 'Enter' && (c.contains('bed-no') || c.contains('ward-name') || e.target.dataset.pv === 'note')){ e.preventDefault(); e.target.blur(); }
 });
 wardsEl.addEventListener('input', e => {
   const d = e.target.dataset;
+  if (d.pv === 'note'){ onPV(e.target, false); return; }
   if (e.target.classList.contains('ward-name')){ const w = findWard(d.ward); if (w){ w.name = e.target.value; save(false); } }
   if (e.target.classList.contains('bed-no')){ const f = findBed(d.bed); if (f){ f.b.bed = e.target.value; save(false); } }
 });
 wardsEl.addEventListener('change', e => {
-  if (!e.target.classList.contains('bed-no')) return;
-  const f = findBed(e.target.dataset.bed); if (!f) return;
-  f.b.bed = e.target.value.trim() || '?';
+  const el = e.target;
+  if (el.dataset.pv){ if (el.dataset.pv !== 'note') onPV(el, true); return; }
+  if (!el.classList.contains('bed-no')) return;
+  const f = findBed(el.dataset.bed); if (!f) return;
+  f.b.bed = el.value.trim() || '?';
   sortBeds(f.w.beds); save();
   whenIdle(() => render());
 });
@@ -963,6 +1417,7 @@ $('wardForm').addEventListener('submit', e => {
   logAct(`➕ เพิ่ม ward ${name}`);
   i.value = ''; save(); render();
 });
+$('modeSw').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
 
 roundEl.value = state.round;
 roundEl.addEventListener('input', () => { state.round = roundEl.value; save(false); });
@@ -1024,7 +1479,7 @@ $('saveRoom').onclick = () => {
 
 /* ---------- misc ---------- */
 document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA/.test(e.target.tagName)){ e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){ e.preventDefault(); undo(); }
 });
 window.addEventListener('beforeunload', e => { if (pending > 0){ e.preventDefault(); e.returnValue = ''; } });
 window.addEventListener('resize', setHH);
@@ -1049,7 +1504,7 @@ $('lineBtn').onclick = () => { commitDrafts(); window.open('https://line.me/R/ms
 
 $('newDay').onclick = () => {
   commitDrafts();
-  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง' + roomNote())) return;
+  if (!confirm('เริ่มวันใหม่: ลบงานที่ ✅ แล้ว และเตียงที่ไม่มีงานค้าง (เฉพาะโหมด Ward)' + roomNote())) return;
   state.wards.forEach(w => {
     w.beds.forEach(b => b.tasks = b.tasks.filter(t => !t.done));
     w.beds = w.beds.filter(b => b.tasks.length);
@@ -1058,9 +1513,9 @@ $('newDay').onclick = () => {
   save(); render(); logAct('🌅 เริ่มวันใหม่ (ลบงานที่เสร็จแล้ว)'); toast('เริ่มวันใหม่แล้ว');
 };
 $('clearAll').onclick = () => {
-  if (!confirm('ล้างเตียงและงานทั้งหมด?' + roomNote())) return;
+  if (!confirm('ล้างเตียงและงานทั้งหมดในโหมด Ward?' + roomNote())) return;
   state.wards.forEach(w => w.beds = []);
-  save(); render(); logAct('🗑 ล้างเตียงและงานทั้งหมด'); toast('ล้างแล้ว');
+  save(); render(); logAct('🗑 ล้างเตียงและงานทั้งหมด (Ward)'); toast('ล้างแล้ว');
 };
 
 const dlg = $('importDlg');
@@ -1091,6 +1546,7 @@ applyView();
 updateHeaderLabels();
 render();
 updateSync();
+setInterval(() => { if (mode === 'lr') whenIdle(renderTracker); }, 60000);   // อัปเดต "PV กี่ชม.ที่แล้ว"
 if (db){
   db.ref('.info/connected').on('value', s => { online = !!s.val(); if (online) registerPresence(); updateSync(); });
   connectRoom();
